@@ -108,7 +108,17 @@
     "ticketlink.co.kr",
     "musical-otk.github.io",
     "x.com/zen__ym",
-    "x.com/search"
+    "x.com/search",
+    "fonts.googleapis.com",
+    "fonts.gstatic.com"
   ],
-  "_retained_note": "eungBingPassUsed·doubleStamp·discount40/50 은 COUPON_ITEMS 가 비어 도달하지 않는 비활성 코드로 의도적으로 남겼다 (pitfalls §13). 화면에 보이는 한글 용어만 raw_terms 로 감시한다."
+  "_retained_note": "eungBingPassUsed·doubleStamp·discount40/50 은 COUPON_ITEMS 가 비어 도달하지 않는 비활성 코드로 의도적으로 남겼다 (pitfalls §13). 화면에 보이는 한글 용어만 raw_terms 로 감시한다.",
+  "scan_files": [
+    "index.html",
+    "guide.html",
+    "handover.html",
+    "manifest.json",
+    "sw.js"
+  ],
+  "_scan_files_note": "handover.html 은 인수인계 안내서. 배포되는 파일이므로 잔재 검사 대상에 넣는다. (오셀로와 이아고에서 guide.html 이 통째로 베이스 작품인 채 검사를 통과한 적이 있다)"
 }

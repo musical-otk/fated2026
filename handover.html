@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 링크를 아는 사람만 보라는 문서다. 검색엔진에 잡히지 않게 한다. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#12161F">
+<title>FATED 스케줄 올리기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+</head>
+<body>
+<style>
+  :root{
+    --ground:#F3EFE6;
+    --panel:#FBF9F4;
+    --edge:#DED5C4;
+    --ink:#12161F;
+    --ink-2:#39435A;
+    --ink-3:#77809A;
+    --navy:#123A6B;
+    --navy-soft:rgba(18,58,107,0.09);
+    --gold:#9A7842;
+    --gold-soft:rgba(154,120,66,0.13);
+    --alarm:#9B2C2C;
+    --alarm-soft:rgba(155,44,44,0.09);
+    --ok:#2F6B4F;
+    --ok-soft:rgba(47,107,79,0.10);
+    --shadow:0 1px 3px rgba(18,22,31,0.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0B0E14;
+      --panel:#151A25;
+      --edge:#2A3346;
+      --ink:#E8E2D6;
+      --ink-2:#B4BCCC;
+      --ink-3:#7B8499;
+      --navy:#6E9AD8;
+      --navy-soft:rgba(110,154,216,0.14);
+      --gold:#D4BC90;
+      --gold-soft:rgba(212,188,144,0.13);
+      --alarm:#E08585;
+      --alarm-soft:rgba(224,133,133,0.12);
+      --ok:#6BBF95;
+      --ok-soft:rgba(107,191,149,0.12);
+      --shadow:0 1px 3px rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0B0E14;
+    --panel:#151A25;
+    --edge:#2A3346;
+    --ink:#E8E2D6;
+    --ink-2:#B4BCCC;
+    --ink-3:#7B8499;
+    --navy:#6E9AD8;
+    --navy-soft:rgba(110,154,216,0.14);
+    --gold:#D4BC90;
+    --gold-soft:rgba(212,188,144,0.13);
+    --alarm:#E08585;
+    --alarm-soft:rgba(224,133,133,0.12);
+    --ok:#6BBF95;
+    --ok-soft:rgba(107,191,149,0.12);
+    --shadow:0 1px 3px rgba(0,0,0,0.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--ground);
+    color:var(--ink);
+    font-family:'IBM Plex Sans KR',-apple-system,'Apple SD Gothic Neo',sans-serif;
+    font-size:15px;
+    line-height:1.75;
+    padding-block:0 56px;
+    padding-left:20px;
+    padding-right:20px;
+    max-width:620px;
+    margin:0 auto;
+    -webkit-text-size-adjust:100%;
+  }
+
+  .masthead{padding-block:34px 26px;border-bottom:1px solid var(--edge);margin-bottom:34px;}
+  .eyebrow{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--gold);font-weight:600;margin-bottom:10px;
+  }
+  h1{
+    font-family:'Gowun Batang',serif;
+    font-size:29px;line-height:1.3;font-weight:700;
+    margin:0 0 12px;text-wrap:balance;
+  }
+  .standfirst{color:var(--ink-2);font-size:14.5px;margin:0;}
+
+  h2{
+    font-family:'Gowun Batang',serif;
+    font-size:21px;font-weight:700;
+    margin:44px 0 6px;text-wrap:balance;
+  }
+  h2 .num{
+    color:var(--gold);font-family:'IBM Plex Mono',monospace;
+    font-size:14px;font-weight:500;margin-right:9px;vertical-align:2px;
+  }
+  .sub{color:var(--ink-3);font-size:13px;margin:0 0 18px;}
+  p{margin:0 0 14px;}
+  strong{font-weight:600;}
+  a{color:var(--navy);text-decoration:underline;text-underline-offset:2px;}
+  a:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px;}
+
+  code{
+    font-family:'IBM Plex Mono',monospace;font-size:0.88em;
+    background:var(--navy-soft);color:var(--ink);
+    padding:1px 5px;border-radius:3px;word-break:break-all;
+  }
+
+  ol.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:s;}
+  ol.steps>li{counter-increment:s;position:relative;padding-left:38px;}
+  ol.steps>li::before{
+    content:counter(s);
+    position:absolute;left:0;top:2px;
+    width:25px;height:25px;border-radius:50%;
+    background:var(--navy);color:var(--ground);
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;
+    display:flex;align-items:center;justify-content:center;
+  }
+  ol.steps>li>p{margin:0;}
+  ol.steps>li>p+p{margin-top:6px;color:var(--ink-2);font-size:13.5px;}
+
+  ul.plain{margin:0 0 14px;padding-left:19px;display:flex;flex-direction:column;gap:7px;}
+  ul.plain li::marker{color:var(--gold);}
+
+  .note{
+    border-left:3px solid var(--gold);background:var(--gold-soft);
+    padding:13px 15px;margin:0 0 16px;
+    font-size:13.5px;line-height:1.7;border-radius:0 5px 5px 0;
+  }
+  .note p{margin:0;}
+  .note p+p{margin-top:8px;}
+  .note .label{
+    display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gold);font-weight:600;margin-bottom:5px;
+  }
+  .stop{border-left-color:var(--alarm);background:var(--alarm-soft);}
+  .stop .label{color:var(--alarm);}
+
+  .facts{
+    background:var(--panel);border:1px solid var(--edge);
+    border-radius:7px;box-shadow:var(--shadow);
+    padding:4px 16px;margin:0 0 18px;
+  }
+  .facts dl{margin:0;display:flex;flex-direction:column;}
+  .facts div{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--edge);}
+  .facts div:last-child{border-bottom:0;}
+  .facts dt{flex:0 0 76px;color:var(--ink-3);font-size:12.5px;font-weight:500;padding-top:1px;}
+  .facts dd{margin:0;font-size:14px;flex:1;}
+
+  .cast{
+    background:var(--panel);border:1px solid var(--edge);
+    border-radius:7px;overflow:hidden;margin:0 0 18px;box-shadow:var(--shadow);
+  }
+  .cast-row{display:flex;align-items:baseline;gap:12px;padding:12px 16px;border-bottom:1px solid var(--edge);}
+  .cast-row:last-child{border-bottom:0;}
+  .cast-key{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--gold);flex:0 0 74px;}
+  .cast-names{font-size:14px;}
+  .cast-role{display:block;font-size:11.5px;color:var(--ink-3);margin-top:1px;}
+
+  pre{
+    background:var(--panel);border:1px solid var(--edge);border-radius:6px;
+    padding:13px 15px;margin:0 0 16px;overflow-x:auto;
+    font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.65;
+    color:var(--ink-2);box-shadow:var(--shadow);
+  }
+
+  /* 프롬프트 — 폰에서 통째로 복사하는 게 핵심이라 버튼을 붙인다 */
+  .prompt{
+    background:var(--panel);border:1px solid var(--edge);
+    border-radius:7px;margin:0 0 16px;box-shadow:var(--shadow);overflow:hidden;
+  }
+  .prompt-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 12px 9px 15px;border-bottom:1px solid var(--edge);
+    background:var(--navy-soft);
+  }
+  .prompt-bar span{font-size:12px;font-weight:600;color:var(--ink-2);}
+  .copy-btn{
+    font-family:inherit;font-size:12px;font-weight:600;
+    background:var(--navy);color:var(--ground);
+    border:0;border-radius:5px;padding:6px 13px;cursor:pointer;
+    flex-shrink:0;
+  }
+  .copy-btn[data-done="1"]{background:var(--ok);}
+  .prompt pre{border:0;border-radius:0;margin:0;box-shadow:none;background:transparent;white-space:pre-wrap;word-break:break-word;}
+
+  .check{
+    background:var(--panel);border:1px solid var(--edge);
+    border-left:3px solid var(--ok);border-radius:0 7px 7px 0;
+    padding:15px 17px;margin:0 0 16px;box-shadow:var(--shadow);
+  }
+  .check h3{font-family:'IBM Plex Sans KR',sans-serif;font-size:14px;font-weight:600;margin:0 0 9px;}
+  .check p{font-size:13.5px;color:var(--ink-2);margin:0 0 10px;}
+  .sum{display:flex;flex-wrap:wrap;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-variant-numeric:tabular-nums;}
+  .sum span{background:var(--ok-soft);padding:3px 9px;border-radius:4px;color:var(--ink-2);}
+
+  footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--edge);color:var(--ink-3);font-size:12.5px;}
+  footer p{margin:0 0 6px;}
+</style>
+
+<header class="masthead">
+  <div class="eyebrow">뮤지컬 FATED · 운영 인계</div>
+  <h1>스케줄 올리는 법</h1>
+  <p class="standfirst">공식 계정에 새 캐스팅 스케줄이 뜨면, 폰에서 이 순서대로 하면 앱에 반영됩니다. 프로그램 설치 없이 브라우저와 AI 앱 하나면 됩니다.</p>
+</header>
+
+<h2><span class="num">00</span>작품 정보</h2>
+<p class="sub">헷갈릴 때 돌아와서 확인하세요.</p>
+<div class="facts">
+  <dl>
+    <div><dt>앱</dt><dd><a href="https://musical-otk.github.io/fated2026/">musical-otk.github.io/fated2026</a></dd></div>
+    <div><dt>관리 도구</dt><dd><a href="https://musical-otk.github.io/admin/">musical-otk.github.io/admin</a></dd></div>
+    <div><dt>저장소</dt><dd><code>fated2026</code></dd></div>
+    <div><dt>공식 계정</dt><dd><a href="https://x.com/Knowerscompany">@Knowerscompany</a></dd></div>
+    <div><dt>공연</dt><dd>2026.11.03 – 2027.01.24<br>링크아트센터드림 드림2관</dd></div>
+  </dl>
+</div>
+
+<h2><span class="num">01</span>처음 한 번만</h2>
+<p class="sub">한 번 해두면 그 폰에 저장됩니다. 다음부터는 03단계부터 하면 됩니다.</p>
+<ol class="steps">
+  <li>
+    <p><strong>GitHub 초대 메일을 수락</strong>합니다.</p>
+    <p><code>musical-otk/fated2026</code> 하나만 초대됩니다. 계정이 없으면 먼저 만드세요.</p>
+  </li>
+  <li>
+    <p>GitHub에서 <strong>토큰</strong>을 만듭니다. PC·폰 브라우저 모두 됩니다.</p>
+    <p>Settings → Developer settings → Personal access tokens → <strong>Tokens (classic)</strong> → Generate new token<br>
+    · Scopes: <strong><code>repo</code></strong> 하나만 체크<br>
+    · Expiration: 2027년 2월 정도로</p>
+  </li>
+  <li>
+    <p>만들어진 문자열(<code>ghp_</code>로 시작)을 <strong>바로 복사</strong>합니다.</p>
+    <p>창을 닫으면 다시 볼 수 없습니다. 잃어버리면 새로 만들면 됩니다.</p>
+  </li>
+  <li>
+    <p><a href="https://musical-otk.github.io/admin/">관리 도구</a>를 열어 <strong>GitHub 인증</strong> 칸에 붙여넣고 <strong>저장</strong>.</p>
+    <p>자주 쓰니 홈 화면에 추가해두면 편합니다.</p>
+  </li>
+</ol>
+<div class="note">
+  <span class="label">저장소 목록에 대하여</span>
+  <p>목록에는 <strong>다른 작품 저장소도 함께 보입니다.</strong> 공개 정보라 그렇습니다. 하지만 저장은 <code>fated2026</code>에만 됩니다 — 다른 걸 고르면 업로드에서 막힙니다. <strong>반드시 <code>fated2026</code>을 고르세요.</strong></p>
+</div>
+<div class="note stop">
+  <span class="label">Claude AI 칸</span>
+  <p><strong>비워두세요.</strong> API 키를 넣어 자동 추출할 수도 있지만, 빽빽한 캐스팅표에서 종종 틀립니다. 대신 03단계 방식을 쓰세요 — 더 정확하고 돈도 안 듭니다.</p>
+</div>
+
+<h2><span class="num">02</span>언제 손대나</h2>
+<p><a href="https://x.com/Knowerscompany">@Knowerscompany</a>에 이런 공지가 뜨면 작업할 때입니다.</p>
+<ul class="plain">
+  <li><strong>티켓 오픈 안내 + 캐스팅 스케줄</strong> → 03~05단계</li>
+  <li><strong>특전·이벤트 안내</strong> → 06단계</li>
+  <li><strong>캐스팅 변경 공지</strong> → 바뀐 회차만 03~05단계로 덮어쓰기</li>
+</ul>
+<div class="note">
+  <span class="label">지금 상태</span>
+  <p>앱에는 <strong>1차 오픈분 11월 3일~22일, 25회차</strong>만 들어 있습니다. 2차 오픈이 나오면 그 뒤 날짜를 추가하게 됩니다.</p>
+</div>
+
+<h2><span class="num">03</span>캐스팅표를 JSON으로 바꾸기</h2>
+<p class="sub">ChatGPT·Claude 등 이미지를 읽을 수 있는 AI 앱이면 무엇이든 됩니다.</p>
+<ol class="steps">
+  <li><p>X에서 캐스팅 스케줄 이미지를 <strong>폰에 저장</strong>합니다.</p></li>
+  <li><p>AI 앱에 그 이미지를 올리고, 아래 프롬프트를 <strong>통째로 복사해서</strong> 같이 보냅니다.</p></li>
+  <li><p>답이 오면 <strong>전체를 복사</strong>합니다. 앞의 확인용 숫자가 섞여 있어도 괜찮습니다 — 관리 도구가 JSON만 골라냅니다.</p></li>
+</ol>
+
+<div class="prompt">
+  <div class="prompt-bar">
+    <span>캐스팅 스케줄용 프롬프트</span>
+    <button class="copy-btn" id="copy-schedule" type="button">복사</button>
+  </div>
+  <pre id="p-schedule">이 이미지는 뮤지컬 〈FATED〉의 캐스팅 스케줄표야.
+표를 읽어서 아래 두 가지를 순서대로 출력해줘.
+
+1) 확인용 숫자 — 대괄호는 절대 쓰지 마
+   전체 회차 수
+   아킬레우스: 박규원 N / 신주협 N / 박준형 N (합계 N)
+   파트로클로스: 반정모 N / 조은성 N / 김재한 N (합계 N)
+   헥토르: 이동수 N / 조민호 N / 신수빈 N (합계 N)
+   세 합계는 모두 전체 회차 수와 같아야 해. 다르면 어디가 불확실한지 적어줘.
+
+2) JSON 배열 — 이것 말고 다른 설명은 붙이지 마
+[{"date":"2026-11-03","time":"20:00","achilles":"박규원","patroclus":"반정모","hector":"이동수"}]
+
+규칙
+- 키는 achilles, patroclus, hector 세 개만 쓴다. 다른 이름으로 바꾸지 않는다.
+- date는 YYYY-MM-DD. 11~12월은 2026년, 1월은 2027년.
+- time은 24시간 HH:MM. 표의 8시=20:00, 3시=15:00, 7시=19:00,
+  2시=14:00, 6시=18:00, 4시=16:00.
+- 하루에 2회 공연이면 같은 date로 항목을 두 개 만든다.
+- 배우 이름은 아래 9명 중에서만 고른다. 비슷한 이름으로 추측하지 않는다.
+  achilles: 박규원, 신주협, 박준형
+  patroclus: 반정모, 조은성, 김재한
+  hector: 이동수, 조민호, 신수빈
+- 표에 없는 회차를 지어내지 않는다.</pre>
+</div>
+
+<h2><span class="num">04</span>올리기</h2>
+<ol class="steps">
+  <li>
+    <p>관리 도구에서 <strong>대상 저장소 → <code>fated2026</code></strong> 선택.</p>
+    <p>고르면 현재 몇 회차가 들어있는지 표시됩니다.</p>
+  </li>
+  <li>
+    <p><strong>📅 schedule.json</strong> 칸에서 <strong>📋 클립보드에서 붙여넣기</strong>를 누릅니다.</p>
+  </li>
+  <li>
+    <p><strong>기존 일정과 병합</strong> 체크는 <strong>켠 채로 둡니다.</strong></p>
+    <p>끄면 기존 25회차가 통째로 날아가고 새로 올린 것만 남습니다. 같은 날짜·시각은 새 값으로 덮어쓰므로 캐스팅 변경도 병합을 켜두면 됩니다.</p>
+  </li>
+  <li><p>미리보기 표가 뜹니다. <strong>여기서 멈추고 05단계를 확인하세요.</strong></p></li>
+  <li><p>확인이 끝나면 <strong>업로드</strong>. 1~2분 뒤 앱에 반영됩니다.</p></li>
+</ol>
+
+<h2><span class="num">05</span>올리기 전 확인</h2>
+<p class="sub">가장 중요한 단계입니다. 틀린 캐스팅은 에러가 안 나고 그냥 조용히 올라갑니다.</p>
+
+<div class="check">
+  <h3>AI가 적어준 합계부터 보세요</h3>
+  <p>배역마다 세 배우의 회차를 더하면 <strong>전체 회차 수와 정확히 같아야</strong> 합니다. 한 칸이라도 밀려 읽혔으면 이 합이 깨집니다. 지금 들어있는 25회차는 이렇습니다.</p>
+  <div class="sum">
+    <span>아킬레우스 9+8+8 = 25</span>
+    <span>파트로클로스 9+9+7 = 25</span>
+    <span>헥토르 9+8+8 = 25</span>
+  </div>
+</div>
+
+<p>합계가 맞으면 미리보기에서 이 네 가지를 눈으로 봅니다.</p>
+<ul class="plain">
+  <li><strong>배우 이름이 아래 9명 안에 있는지</strong> — 오타 한 글자면 앱에서 다른 사람이 됩니다</li>
+  <li><strong>날짜가 공연 기간 안인지</strong> — 2026.11.03 ~ 2027.01.24</li>
+  <li><strong>월요일이 섞이지 않았는지</strong> — 월요일은 공연이 없습니다</li>
+  <li><strong>시각이 24시간 형식인지</strong> — <code>20:00</code>이지 <code>8:00</code>이 아닙니다</li>
+</ul>
+
+<div class="cast">
+  <div class="cast-row">
+    <span class="cast-key">achilles</span>
+    <span class="cast-names">박규원 · 신주협 · 박준형<span class="cast-role">아킬레우스</span></span>
+  </div>
+  <div class="cast-row">
+    <span class="cast-key">patroclus</span>
+    <span class="cast-names">반정모 · 조은성 · 김재한<span class="cast-role">파트로클로스</span></span>
+  </div>
+  <div class="cast-row">
+    <span class="cast-key">hector</span>
+    <span class="cast-names">이동수 · 조민호 · 신수빈<span class="cast-role">헥토르</span></span>
+  </div>
+</div>
+
+<div class="note stop">
+  <span class="label">자주 나는 실수</span>
+  <p><strong>공연 시각은 표를 그대로 믿으세요.</strong> 공식 안내에는 "화수목금 8시"라고만 적혀 있지만, 실제로 11월 18일(수)은 16시·20시 2회 공연입니다. 안내문이 아니라 <strong>캐스팅표가 정답</strong>입니다.</p>
+</div>
+
+<h2><span class="num">06</span>특전 올리기</h2>
+<p>특전·이벤트 안내가 뜨면 <strong>🎁 events.json</strong> 칸에 같은 방식으로 올립니다. 지금은 비어 있습니다.</p>
+
+<div class="prompt">
+  <div class="prompt-bar">
+    <span>특전·이벤트용 프롬프트</span>
+    <button class="copy-btn" id="copy-events" type="button">복사</button>
+  </div>
+  <pre id="p-events">이 이미지는 뮤지컬 〈FATED〉의 특전/이벤트 안내야.
+공지 주소: (여기에 트윗 주소를 붙여넣기. 없으면 이 줄을 지워)
+JSON 배열만 출력해줘. 다른 설명은 붙이지 마.
+
+[{"name":"이벤트명","startDate":"2026-12-01","endDate":"2026-12-14","color":"#B08D57","description":"무엇을 어떻게 받는지 한 줄","url":"공지 주소"}]
+
+규칙
+- 날짜는 YYYY-MM-DD. 11~12월은 2026년, 1월은 2027년.
+- 기간이 하루뿐이면 startDate와 endDate를 같게 쓴다.
+- color는 #B08D57, #123A6B, #6B8E4E, #9B2C2C 중에서 고른다.
+- description은 한 줄로 짧게. 이미지에 없는 내용은 지어내지 않는다.
+- url에는 위에 적어준 공지 주소를 모든 항목에 똑같이 넣는다.
+  주소를 안 적어줬으면 url 항목 자체를 빼라. 주소를 지어내지 마.</pre>
+</div>
+<div class="note">
+  <span class="label">공지 주소는 선택</span>
+  <p>넣으면 앱 달력의 그 이벤트 옆에 <strong>"안내 ↗"</strong> 링크가 생겨 원문으로 갑니다. 안 넣어도 이벤트는 정상 표시되고 링크만 안 보입니다.</p>
+  <p>넣으려면 <strong>프롬프트의 "공지 주소" 줄에 트윗 주소를 붙여넣어야</strong> 합니다. 올린 뒤에는 관리 도구에서 고칠 수 없습니다 — 미리보기는 보기만 되고 수정은 안 됩니다.</p>
+</div>
+
+<h2><span class="num">07</span>직접 적을 때의 형식</h2>
+<p>AI 없이 손으로 올릴 때 쓰는 모양입니다. 한 회차가 한 줄이고, 하루 2회 공연이면 같은 날짜로 두 줄을 씁니다.</p>
+<pre>[
+  { "date": "2026-11-23", "time": "20:00",
+    "achilles": "박규원", "patroclus": "반정모", "hector": "이동수" },
+  { "date": "2026-11-24", "time": "16:00",
+    "achilles": "신주협", "patroclus": "김재한", "hector": "신수빈" }
+]</pre>
+<p>왼쪽 이름(<code>achilles</code> · <code>patroclus</code> · <code>hector</code>)은 <strong>철자 그대로</strong> 써야 합니다. 바꾸면 앱이 캐스팅을 못 읽습니다.</p>
+
+<h2><span class="num">08</span>건드리지 않는 것</h2>
+<div class="note stop">
+  <span class="label">그대로 두세요</span>
+  <p><strong>도장은 관람 1회차부터 1개씩</strong>입니다. 공식 안내에는 "2회차부터 발급"이라고 적혀 있지만, 앱은 의도적으로 다르게 만들어져 있습니다. 문의가 와도 버그가 아닙니다.</p>
+  <p><strong>좌석도는 공식 좌석배치도 기준</strong>으로 211석(판매 197석)입니다. 극장 공표 좌석수와 달라도 그대로 둡니다.</p>
+  <p><code>schedule.json</code>과 <code>events.json</code> 외의 파일은 이 도구로 건드리지 마세요.</p>
+</div>
+
+<h2><span class="num">09</span>막혔을 때</h2>
+<ul class="plain">
+  <li><strong>저장소 목록이 비어 있음</strong> — 토큰이 저장 안 됐거나 만료됐습니다. 다시 붙여넣어 보고, 안 되면 01단계로 새로 만드세요.</li>
+  <li><strong>업로드에서 권한 오류</strong> — <code>fated2026</code>이 아닌 저장소를 고른 겁니다. 다시 확인하세요.</li>
+  <li><strong>"클립보드에서 JSON 배열을 찾지 못했습니다"</strong> — AI 답에 JSON이 안 들어갔거나 확인용 숫자에 대괄호가 섞인 경우입니다. 프롬프트를 다시 보내거나 07단계처럼 직접 적으세요.</li>
+  <li><strong>업로드는 됐는데 앱이 그대로</strong> — 1~2분 기다린 뒤 새로고침. 그래도 안 바뀌면 브라우저 <strong>캐시만</strong> 지웁니다. <strong>사이트 데이터는 지우지 마세요 — 관람 기록이 거기 있습니다.</strong></li>
+  <li><strong>회차 합이 안 맞음</strong> — 올리지 마세요. 이미지를 확대해 다시 읽히거나, 07단계처럼 직접 적으세요.</li>
+  <li><strong>잘못 올렸음</strong> — 고칠 수 있습니다. 올바른 값으로 <strong>한 번 더 올리면</strong> 같은 날짜·시각의 회차를 덮어씁니다(병합 켠 상태). 지워야 하는 회차가 생겼다면 07단계처럼 전체를 직접 적고 <strong>병합을 끄고</strong> 올리세요 — 이때는 올린 것만 남습니다.</li>
+</ul>
+
+<footer>
+  <p>뮤지컬 〈FATED〉 관극 다이어리 · 링크아트센터드림 드림2관</p>
+  <p>앱 자체(화면·기능)를 고쳐야 하는 일은 이 도구로 할 수 없습니다. 원래 담당자에게 전달하세요.</p>
+</footer>
+
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var src = document.getElementById(btn.id.replace('copy-', 'p-'));
+      if (!src) return;
+      var text = src.textContent;
+      var done = function(){
+        btn.textContent = '복사됨';
+        btn.dataset.done = '1';
+        setTimeout(function(){ btn.textContent = '복사'; btn.dataset.done = ''; }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function(){ select(src); });
+      } else {
+        select(src);
+      }
+    });
+  });
+  // 클립보드 API 가 막힌 브라우저에서는 최소한 전체 선택까지는 해준다
+  function select(el){
+    var r = document.createRange();
+    r.selectNodeContents(el);
+    var s = window.getSelection();
+    s.removeAllRanges();
+    s.addRange(r);
+  }
+</script>
+</body>
+</html>
