@@ -9,8 +9,6 @@
 <meta name="theme-color" content="#12161F">
 <title>FATED 스케줄 올리기</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
-</head>
-<body>
 <style>
   :root{
     --ground:#F3EFE6;
@@ -202,9 +200,26 @@
   .sum{display:flex;flex-wrap:wrap;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-variant-numeric:tabular-nums;}
   .sum span{background:var(--ok-soft);padding:3px 9px;border-radius:4px;color:var(--ink-2);}
 
+  .shot{margin:0 0 14px;}
+  .shot img{
+    display:block;width:100%;height:auto;max-width:100%;
+    border:1px solid var(--edge);border-radius:8px;box-shadow:var(--shadow);
+    background:#0E1117;
+  }
+  .legend{display:flex;flex-direction:column;gap:9px;margin:0 0 16px;}
+  .legend>div{display:flex;align-items:flex-start;gap:10px;font-size:13.5px;line-height:1.6;}
+  .pin{
+    flex:0 0 22px;width:22px;height:22px;border-radius:50%;
+    background:#E0A020;color:#1A1A1A;
+    font:700 12px/1 'IBM Plex Mono',monospace;
+    display:flex;align-items:center;justify-content:center;margin-top:2px;
+  }
+  .pin.stop{background:var(--alarm);color:#fff;}
   footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--edge);color:var(--ink-3);font-size:12.5px;}
   footer p{margin:0 0 6px;}
 </style>
+</head>
+<body>
 
 <header class="masthead">
   <div class="eyebrow">뮤지컬 FATED · 운영 인계</div>
@@ -224,8 +239,23 @@
   </dl>
 </div>
 
-<h2><span class="num">01</span>처음 한 번만</h2>
-<p class="sub">한 번 해두면 그 폰에 저장됩니다. 다음부터는 03단계부터 하면 됩니다.</p>
+<h2><span class="num">01</span>화면 한눈에 보기</h2>
+<p class="sub">관리 도구를 열면 이 화면이 나옵니다. 눌러야 할 곳만 표시했습니다.</p>
+<figure class="shot">
+  <img src="admin-steps.png" alt="OTK Admin 화면에 작업 순서를 표시한 그림" width="560" height="1417">
+</figure>
+<div class="legend">
+  <div><span class="pin">1</span><span>GitHub 토큰을 붙여넣고 <strong>저장</strong> — 02단계에서 만듭니다</span></div>
+  <div><span class="pin stop">✕</span><span>Claude AI 칸은 <strong>비워둡니다</strong></span></div>
+  <div><span class="pin">2</span><span>대상 저장소에서 <strong><code>fated2026</code></strong> 선택</span></div>
+  <div><span class="pin">3</span><span>AI가 준 답을 복사해 와서 <strong>클립보드에서 붙여넣기</strong></span></div>
+  <div><span class="pin">4</span><span><strong>기존 일정과 병합</strong>은 켠 채로 둡니다</span></div>
+  <div><span class="pin">5</span><span>미리보기 확인이 끝나면 <strong>GitHub에 반영하기</strong></span></div>
+</div>
+<p>특전을 올릴 때는 아래쪽 <strong>events.json</strong> 칸에서 3~4를 똑같이 하면 됩니다.</p>
+
+<h2><span class="num">02</span>처음 한 번만</h2>
+<p class="sub">한 번 해두면 그 폰에 저장됩니다. 다음부터는 04단계부터 하면 됩니다.</p>
 <ol class="steps">
   <li>
     <p><strong>GitHub 초대 메일을 수락</strong>합니다.</p>
@@ -255,19 +285,19 @@
   <p><strong>비워두세요.</strong> API 키를 넣어 자동 추출할 수도 있지만, 빽빽한 캐스팅표에서 종종 틀립니다. 대신 03단계 방식을 쓰세요 — 더 정확하고 돈도 안 듭니다.</p>
 </div>
 
-<h2><span class="num">02</span>언제 손대나</h2>
+<h2><span class="num">03</span>언제 손대나</h2>
 <p><a href="https://x.com/Knowerscompany">@Knowerscompany</a>에 이런 공지가 뜨면 작업할 때입니다.</p>
 <ul class="plain">
-  <li><strong>티켓 오픈 안내 + 캐스팅 스케줄</strong> → 03~05단계</li>
-  <li><strong>특전·이벤트 안내</strong> → 06단계</li>
-  <li><strong>캐스팅 변경 공지</strong> → 바뀐 회차만 03~05단계로 덮어쓰기</li>
+  <li><strong>티켓 오픈 안내 + 캐스팅 스케줄</strong> → 04~06단계</li>
+  <li><strong>특전·이벤트 안내</strong> → 07단계</li>
+  <li><strong>캐스팅 변경 공지</strong> → 바뀐 회차만 04~06단계로 덮어쓰기</li>
 </ul>
 <div class="note">
   <span class="label">지금 상태</span>
   <p>앱에는 <strong>1차 오픈분 11월 3일~22일, 25회차</strong>만 들어 있습니다. 2차 오픈이 나오면 그 뒤 날짜를 추가하게 됩니다.</p>
 </div>
 
-<h2><span class="num">03</span>캐스팅표를 JSON으로 바꾸기</h2>
+<h2><span class="num">04</span>캐스팅표를 JSON으로 바꾸기</h2>
 <p class="sub">ChatGPT·Claude 등 이미지를 읽을 수 있는 AI 앱이면 무엇이든 됩니다.</p>
 <ol class="steps">
   <li><p>X에서 캐스팅 스케줄 이미지를 <strong>폰에 저장</strong>합니다.</p></li>
@@ -306,7 +336,7 @@
 - 표에 없는 회차를 지어내지 않는다.</pre>
 </div>
 
-<h2><span class="num">04</span>올리기</h2>
+<h2><span class="num">05</span>올리기</h2>
 <ol class="steps">
   <li>
     <p>관리 도구에서 <strong>대상 저장소 → <code>fated2026</code></strong> 선택.</p>
@@ -319,11 +349,11 @@
     <p><strong>기존 일정과 병합</strong> 체크는 <strong>켠 채로 둡니다.</strong></p>
     <p>끄면 기존 25회차가 통째로 날아가고 새로 올린 것만 남습니다. 같은 날짜·시각은 새 값으로 덮어쓰므로 캐스팅 변경도 병합을 켜두면 됩니다.</p>
   </li>
-  <li><p>미리보기 표가 뜹니다. <strong>여기서 멈추고 05단계를 확인하세요.</strong></p></li>
+  <li><p>미리보기 표가 뜹니다. <strong>여기서 멈추고 06단계를 확인하세요.</strong></p></li>
   <li><p>확인이 끝나면 <strong>업로드</strong>. 1~2분 뒤 앱에 반영됩니다.</p></li>
 </ol>
 
-<h2><span class="num">05</span>올리기 전 확인</h2>
+<h2><span class="num">06</span>올리기 전 확인</h2>
 <p class="sub">가장 중요한 단계입니다. 틀린 캐스팅은 에러가 안 나고 그냥 조용히 올라갑니다.</p>
 
 <div class="check">
@@ -364,7 +394,7 @@
   <p><strong>공연 시각은 표를 그대로 믿으세요.</strong> 공식 안내에는 "화수목금 8시"라고만 적혀 있지만, 실제로 11월 18일(수)은 16시·20시 2회 공연입니다. 안내문이 아니라 <strong>캐스팅표가 정답</strong>입니다.</p>
 </div>
 
-<h2><span class="num">06</span>특전 올리기</h2>
+<h2><span class="num">07</span>특전 올리기</h2>
 <p>특전·이벤트 안내가 뜨면 <strong>🎁 events.json</strong> 칸에 같은 방식으로 올립니다. 지금은 비어 있습니다.</p>
 
 <div class="prompt">
@@ -392,7 +422,7 @@ JSON 배열만 출력해줘. 다른 설명은 붙이지 마.
   <p>넣으려면 <strong>프롬프트의 "공지 주소" 줄에 트윗 주소를 붙여넣어야</strong> 합니다. 올린 뒤에는 관리 도구에서 고칠 수 없습니다 — 미리보기는 보기만 되고 수정은 안 됩니다.</p>
 </div>
 
-<h2><span class="num">07</span>직접 적을 때의 형식</h2>
+<h2><span class="num">08</span>직접 적을 때의 형식</h2>
 <p>AI 없이 손으로 올릴 때 쓰는 모양입니다. 한 회차가 한 줄이고, 하루 2회 공연이면 같은 날짜로 두 줄을 씁니다.</p>
 <pre>[
   { "date": "2026-11-23", "time": "20:00",
@@ -402,7 +432,7 @@ JSON 배열만 출력해줘. 다른 설명은 붙이지 마.
 ]</pre>
 <p>왼쪽 이름(<code>achilles</code> · <code>patroclus</code> · <code>hector</code>)은 <strong>철자 그대로</strong> 써야 합니다. 바꾸면 앱이 캐스팅을 못 읽습니다.</p>
 
-<h2><span class="num">08</span>건드리지 않는 것</h2>
+<h2><span class="num">09</span>건드리지 않는 것</h2>
 <div class="note stop">
   <span class="label">그대로 두세요</span>
   <p><strong>도장은 관람 1회차부터 1개씩</strong>입니다. 공식 안내에는 "2회차부터 발급"이라고 적혀 있지만, 앱은 의도적으로 다르게 만들어져 있습니다. 문의가 와도 버그가 아닙니다.</p>
@@ -410,14 +440,14 @@ JSON 배열만 출력해줘. 다른 설명은 붙이지 마.
   <p><code>schedule.json</code>과 <code>events.json</code> 외의 파일은 이 도구로 건드리지 마세요.</p>
 </div>
 
-<h2><span class="num">09</span>막혔을 때</h2>
+<h2><span class="num">10</span>막혔을 때</h2>
 <ul class="plain">
-  <li><strong>저장소 목록이 비어 있음</strong> — 토큰이 저장 안 됐거나 만료됐습니다. 다시 붙여넣어 보고, 안 되면 01단계로 새로 만드세요.</li>
+  <li><strong>저장소 목록이 비어 있음</strong> — 토큰이 저장 안 됐거나 만료됐습니다. 다시 붙여넣어 보고, 안 되면 02단계로 새로 만드세요.</li>
   <li><strong>업로드에서 권한 오류</strong> — <code>fated2026</code>이 아닌 저장소를 고른 겁니다. 다시 확인하세요.</li>
-  <li><strong>"클립보드에서 JSON 배열을 찾지 못했습니다"</strong> — AI 답에 JSON이 안 들어갔거나 확인용 숫자에 대괄호가 섞인 경우입니다. 프롬프트를 다시 보내거나 07단계처럼 직접 적으세요.</li>
+  <li><strong>"클립보드에서 JSON 배열을 찾지 못했습니다"</strong> — AI 답에 JSON이 안 들어갔거나 확인용 숫자에 대괄호가 섞인 경우입니다. 프롬프트를 다시 보내거나 08단계처럼 직접 적으세요.</li>
   <li><strong>업로드는 됐는데 앱이 그대로</strong> — 1~2분 기다린 뒤 새로고침. 그래도 안 바뀌면 브라우저 <strong>캐시만</strong> 지웁니다. <strong>사이트 데이터는 지우지 마세요 — 관람 기록이 거기 있습니다.</strong></li>
-  <li><strong>회차 합이 안 맞음</strong> — 올리지 마세요. 이미지를 확대해 다시 읽히거나, 07단계처럼 직접 적으세요.</li>
-  <li><strong>잘못 올렸음</strong> — 고칠 수 있습니다. 올바른 값으로 <strong>한 번 더 올리면</strong> 같은 날짜·시각의 회차를 덮어씁니다(병합 켠 상태). 지워야 하는 회차가 생겼다면 07단계처럼 전체를 직접 적고 <strong>병합을 끄고</strong> 올리세요 — 이때는 올린 것만 남습니다.</li>
+  <li><strong>회차 합이 안 맞음</strong> — 올리지 마세요. 이미지를 확대해 다시 읽히거나, 08단계처럼 직접 적으세요.</li>
+  <li><strong>잘못 올렸음</strong> — 고칠 수 있습니다. 올바른 값으로 <strong>한 번 더 올리면</strong> 같은 날짜·시각의 회차를 덮어씁니다(병합 켠 상태). 지워야 하는 회차가 생겼다면 08단계처럼 전체를 직접 적고 <strong>병합을 끄고</strong> 올리세요 — 이때는 올린 것만 남습니다.</li>
 </ul>
 
 <footer>
