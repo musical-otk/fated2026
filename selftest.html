@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SELFTEST</title>
+<style>
+  body{font-family:'Apple SD Gothic Neo',sans-serif;max-width:820px;margin:0 auto;padding:20px;background:#F2F7F6;color:#16302F;}
+  h1{font-size:18px;margin:0 0 4px;}
+  .sub{font-size:12px;color:#4A6B69;margin-bottom:14px;}
+  #summary{font-weight:700;font-size:15px;padding:10px 14px;border-radius:10px;margin-bottom:12px;}
+  .ok{background:#DFF3EA;color:#12603F;}
+  .bad{background:#FBE3E3;color:#8C2020;}
+  .grp{font-weight:700;font-size:13px;margin:14px 0 6px;color:#12525A;}
+  .row{display:flex;gap:8px;padding:5px 8px;border-bottom:1px solid #D7E4E2;font-size:13px;align-items:flex-start;}
+  .tag{flex-shrink:0;width:52px;font-weight:700;}
+  .p{color:#12603F;} .f{color:#8C2020;}
+  .name{flex:1;}
+  .detail{font-size:11px;color:#8C2020;white-space:pre-wrap;}
+  iframe{width:1px;height:1px;opacity:0;position:absolute;pointer-events:none;}
+</style>
+</head>
+<body>
+<h1>⚔️ FATED 관극 다이어리 — 셀프 검사</h1>
+<div class="sub">index.html 을 iframe 으로 실제 로드해 내부 상태를 직접 검증합니다. (TEST_PLAN.md L2 계층)</div>
+<div id="summary">실행 중…</div>
+<div id="results"></div>
+<iframe id="app" src="./index.html"></iframe>
+
+<script>
+const results = [];
+let W = null;
+
+function t(group, name, fn) { results.push({ group, name, fn }); }
+function eq(a, b, msg) {
+  const A = JSON.stringify(a), B = JSON.stringify(b);
+  if (A !== B) throw new Error((msg ? msg + ' — ' : '') + `기대 ${B}, 실제 ${A}`);
+}
+function ok(cond, msg) { if (!cond) throw new Error(msg || '조건 실패'); }
+
+// 최상위 const/let 은 window 속성이 되지 않으므로 iframe 스코프에서 eval 로 읽는다
+const g = n => W.eval(n);
+
+// 시나리오마다 저장소를 비워 순서 의존성을 없앤다.
+// 단, fetch 로 받아온 schedule/events 는 남긴다 (지우면 이후 데이터 검사가 깨진다)
+const KEEP = ['fated_schedule', 'fated_events'];
+function reset() {
+  const ls = W.localStorage;
+  Object.keys(ls)
+    .filter(k => k.startsWith('fated_') && !KEEP.includes(k))
+    .forEach(k => ls.removeItem(k));
+}
+function boards() { return W.getStampBoards(); }
+function newBoard(name) {
+  const bs = boards();
+  const b = { id: W.uuid(), name: String(name), totalSlots: g('DEFAULT_SLOTS'),
+              milestones: W.defaultMilestones(), currentCount: 0, history: [] };
+  bs.push(b); W.saveStampBoards(bs);
+  return b.id;
+}
+function countOf(id) { const b = boards().find(x => x.id === id); return b ? b.currentCount : null; }
+function fill(id, n) { W.applyStampToBoard(id, n, '2026-11-03', '테스트'); W.applyStampToBoard._lastOverflow = 0; }
+
+// FATED 스케줄에서 확실히 1회차뿐인 날 (화요일 20:00)
+const D1 = '2026-11-03', T1 = '20:00';
+
+// ── E. 개조 정합성 ────────────────────────────────────
+t('E. 개조 정합성', 'ROLES 가 FATED 3배역', () => {
+  eq(g('ROLES').map(r => r.key), ['achilles','patroclus','hector']);
+});
+t('E. 개조 정합성', '배역별 배우 3명씩 · 9명', () => {
+  g('ROLES').forEach(r => eq(r.actors.length, 3, r.label));
+  const all = g('ROLES').flatMap(r => r.actors);
+  eq(new Set(all).size, 9, '배우 중복 없음');
+});
+t('E. 개조 정합성', '기록 폼에 배역 입력 3개 존재', () => {
+  const d = W.document;
+  g('ROLES').forEach(r => ok(d.getElementById('rec-' + r.key), `#rec-${r.key} 없음`));
+});
+t('E. 개조 정합성', '축소된 배역의 입력이 남아있지 않음', () => {
+  const d = W.document;
+  ['marco','soma','yuo','uiju','eunhui'].forEach(k =>
+    ok(!d.getElementById('rec-' + k), `이끼숲 배역 입력 #rec-${k} 잔존`));
+});
+t('E. 개조 정합성', '저장소 네임스페이스가 fated_', () => {
+  eq(g('APP_PREFIX'), 'fated_');
+});
+
+// ── U. 좌석 ───────────────────────────────────────────
+t('U. 좌석', '단층 A~L (2층 없음)', () => {
+  eq(Object.keys(g('SEAT_PLAN')), ['1층'], '층이 하나여야 함');
+  eq(g('SEAT_PLAN')['1층'].rows, ['A','B','C','D','E','F','G','H','I','J','K','L']);
+});
+t('U. 좌석', '좌석 합계 = 판독 211석', () => {
+  const span = z => z ? (z[1] - z[0] + 1) : 0;
+  const sum = f => g('SEAT_PLAN')[f].rows.reduce((s, r) => {
+    const d = g('SEAT_PLAN')[f].def[r];
+    return s + span(d.l) + span(d.m) + span(d.r);
+  }, 0);
+  eq(sum('1층'), 211, '단층 총계');
+});
+t('U. 좌석', '미판매석 14석 · 실판매 197석', () => {
+  const n = Object.values(g('SEAT_UNAVAILABLE')['1층']).reduce((s, a) => s + a.length, 0);
+  eq(n, 14, '미판매석');
+  eq(211 - n, 197, '실판매');
+});
+t('U. 좌석', '미판매석이 모두 실제 좌석 범위 안', () => {
+  const plan = g('SEAT_PLAN')['1층'], blocked = g('SEAT_UNAVAILABLE')['1층'];
+  Object.entries(blocked).forEach(([row, nums]) => {
+    const d = plan.def[row];
+    ok(d, `${row}열이 SEAT_PLAN 에 없음`);
+    const inRange = n => [d.l, d.m, d.r].some(z => z && n >= z[0] && n <= z[1]);
+    nums.forEach(n => ok(inRange(n), `${row}열 ${n}번이 좌석 범위 밖`));
+  });
+});
+t('U. 좌석', '정렬 기준(FLOOR_ZONES)이 모든 열을 담을 수 있음', () => {
+  const Z = g('FLOOR_ZONES');
+  const span = z => z ? (z[1] - z[0] + 1) : 0;
+  Object.keys(Z).forEach(f => {
+    g('SEAT_PLAN')[f].rows.forEach(r => {
+      const d = g('SEAT_PLAN')[f].def[r];
+      ok(span(d.l) <= Z[f].l, `${f} ${r}열 좌구역 ${span(d.l)} > 기준 ${Z[f].l}`);
+      ok(span(d.m) <= Z[f].m, `${f} ${r}열 중구역 ${span(d.m)} > 기준 ${Z[f].m}`);
+      ok(span(d.r) <= Z[f].r, `${f} ${r}열 우구역 ${span(d.r)} > 기준 ${Z[f].r}`);
+    });
+  });
+});
+t('U. 좌석', '단층이므로 들여쓰기 여백이 0', () => {
+  const C = 11, G = 1, ZG = 11;
+  eq(W.floorLeadPx('1층', C, G, ZG), 0, '층이 하나면 항상 0');
+});
+t('U. 좌석', '좌석 입력 드롭다운(FLOOR_ROWS)이 좌석도와 일치', () => {
+  eq(Object.keys(g('FLOOR_ROWS')), ['1층']);
+  eq(g('FLOOR_ROWS')['1층'], g('SEAT_PLAN')['1층'].rows, 'FLOOR_ROWS 와 SEAT_PLAN 이 어긋남');
+});
+
+// ── S. 도장판 (MANIA CARD) ────────────────────────────
+t('S. 도장판', '마일스톤이 3·7회 (선택지 없음)', () => {
+  const ms = W.defaultMilestones();
+  eq(ms.map(m => m.at), [3, 7]);
+  eq(g('DEFAULT_SLOTS'), 7, '도장판은 7칸');
+  eq(ms[ms.length - 1].at, g('DEFAULT_SLOTS'), '마지막 마일스톤이 마지막 칸이어야 함');
+  ms.forEach(m => ok(m.choiceRequired === undefined, 'FATED 는 보상 선택이 없어야 함'));
+});
+t('S. 도장판', '보상에 쿠폰이 걸려있지 않음 (전부 실물 굿즈)', () => {
+  W.defaultMilestones().forEach(m =>
+    eq(m.couponKey, null, `${m.at}회 보상에 couponKey 가 붙어 있음`));
+});
+t('S. 도장판', 'S8 — 잔여 충분하면 같은 판에 2개', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 3);
+  W.applyStampToBoard(id, 2, '2026-11-04', '2매');
+  eq(W.applyStampToBoard._lastOverflow, 0, '초과분 없어야 함');
+  eq(countOf(id), 5);
+  eq(boards().length, 1, '새 판이 생기면 안 됨');
+});
+t('S. 도장판', 'S1 — 잔여 1칸 + 2개 적립 → 초과 1개는 새 판으로', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 6);
+  W.applyStampToBoard(id, 2, '2026-11-04', '2매');
+  const over = W.applyStampToBoard._lastOverflow;
+  eq(over, 1, '초과분');
+  eq(countOf(id), 7, '기존 판은 가득 참');
+  W.createOverflowBoard(over, '2026-11-04', '2매', '', null);
+  eq(boards().length, 2, '새 판 1개 생성');
+  const nb = boards().find(b => b.id !== id);
+  eq(nb.currentCount, 1, '새 판에 초과분 1개');
+  eq(nb.totalSlots, 7, '새 판도 7칸');
+});
+t('S. 도장판', 'S9 — 초과분이 기존 미완성 판으로 가면 안 됨 (합산 불가)', () => {
+  reset();
+  const a = newBoard(1), b = newBoard(2);
+  fill(b, 3);              // 미완성 판이 이미 존재
+  fill(a, 6);
+  W.applyStampToBoard(a, 2, '2026-11-04', '2매');
+  const over = W.applyStampToBoard._lastOverflow;
+  eq(over, 1);
+  W.createOverflowBoard(over, '2026-11-04', '2매', '', null);
+  eq(countOf(b), 3, '기존 미완성 판은 그대로여야 함 (여러 장 합산 불가)');
+  eq(boards().length, 3, '새 판이 추가로 생성돼야 함');
+});
+t('S. 도장판', 'S2 — 가득 찬 판에는 더 못 찍음', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 7);
+  const msg = W.applyStampToBoard(id, 1, '2026-11-05', '테스트');
+  ok(/이미 완성/.test(msg || ''), '완성 안내가 나와야 함: ' + msg);
+  eq(countOf(id), 7);
+});
+t('S. 도장판', 'S3 — 3·7회에서 보상 발동', () => {
+  reset();
+  const id = newBoard(1);
+  const at = n => { const b = boards().find(x => x.id === id); return b.milestones.find(m => m.at === n).notified; };
+  fill(id, 2); eq([at(3), at(7)], [false, false], '2회');
+  fill(id, 1); eq([at(3), at(7)], [true,  false], '3회');
+  fill(id, 3); eq([at(3), at(7)], [true,  false], '6회');
+  fill(id, 1); eq([at(3), at(7)], [true,  true ], '7회');
+});
+t('S. 도장판', '도장을 채워도 쿠폰이 생기지 않음', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 7);
+  const c = W.getCoupons(), bs = boards(), rs = W.getRecords();
+  Object.keys(c).forEach(k =>
+    eq(W.calcCouponCount(k, c, bs, rs), 0, `${k} 이 생기면 안 됨`));
+});
+
+// ── R. 기록 생명주기 ──────────────────────────────────
+// 폼을 실제로 조작해 saveRecord / deleteCurrentRecord 경로를 그대로 태운다
+function addRecordViaForm({ date, time, cast = {}, boardId = '', discount = '', paidDiff = false }) {
+  const d = W.document;
+  W.openAddRecord(date);
+  d.getElementById('rec-time').value = time;
+  // openAddRecord(date) 는 스케줄에서 캐스팅을 자동 입력한다.
+  // 테스트는 의도한 값만 남기려고 전부 비운 뒤 cast 를 적용한다.
+  g('ROLES').forEach(r => { d.getElementById('rec-' + r.key).value = ''; });
+  Object.entries(cast).forEach(([k, v]) => { d.getElementById('rec-' + k).value = v; });
+  if (discount) {
+    d.getElementById('rec-discount-type').value = discount;
+    ok(d.getElementById('rec-discount-type').value === discount, '할인권종 목록에 없음: ' + discount);
+    W.onDiscountTypeChange();
+  }
+  if (paidDiff) d.getElementById('rec-paid-diff').checked = true;
+  if (boardId) {
+    const sel = d.getElementById('rec-stamp-board');
+    sel.value = boardId;
+    ok(sel.value === boardId, '도장판 선택 실패 — 목록에 없음');
+    W.onRecStampBoardChange();
+  }
+  W.saveRecord();
+  return W.getRecords();
+}
+function deleteRecordById(id) {
+  W.confirm = () => true;                       // 삭제 확인만 승인
+  W.eval('currentDetailId = ' + JSON.stringify(id));
+  W.deleteCurrentRecord();
+  W.confirm = () => false;                      // 기본값으로 복귀
+}
+
+t('R. 기록', 'R1 — 기록 삭제 시 도장도 회수', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 2);
+  const before = countOf(id);
+
+  const recs = addRecordViaForm({
+    date: D1, time: T1,
+    cast: { achilles: '박규원', patroclus: '반정모' }, boardId: id
+  });
+  eq(recs.length, 1, '기록 저장');
+  eq(countOf(id), before + 1, '도장 1개 적립');
+
+  deleteRecordById(recs[0].id);
+  eq(W.getRecords().length, 0, '기록 삭제');
+  eq(countOf(id), before, '도장 회수 — 적립 전 상태로 복귀');
+});
+
+t('R. 기록', 'R1b — 도장 없는 기록 삭제는 도장판에 영향 없음', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 3);
+  const recs = addRecordViaForm({
+    date: D1, time: T1, cast: { achilles: '박규원' }
+  });
+  eq(countOf(id), 3, '연동 안 했으니 그대로');
+  deleteRecordById(recs[0].id);
+  eq(countOf(id), 3, '삭제 후에도 그대로');
+});
+
+t('R. 기록', 'R6 — 배역 전부 비워도 저장 가능 (필수 배역 없음)', () => {
+  reset();
+  const recs = addRecordViaForm({ date: D1, time: T1 });
+  eq(recs.length, 1, '배역 없이도 저장돼야 함');
+  g('ROLES').forEach(r => eq(recs[0][r.key], '', r.label + ' 은 빈 문자열'));
+});
+
+t('R. 기록', 'R6b — 배역 없는 기록 요약이 깨지지 않음', () => {
+  reset();
+  const recs = addRecordViaForm({ date: D1, time: T1 });
+  const s = W.buildCastSummary(recs[0]);
+  ok(typeof s === 'string' && s.length > 0, '빈 문자열이 아니어야 함: ' + JSON.stringify(s));
+  ok(!/undefined/.test(s), 'undefined 가 섞이면 안 됨: ' + s);
+});
+
+t('R. 기록', 'R7 — 날짜 지정 시 스케줄 캐스팅 자동 입력', () => {
+  reset();
+  const d = W.document;
+  W.openAddRecord(D1);   // 개막일, 20:00 1회차뿐
+  const s = W.getSchedule().find(x => x.date === D1);
+  ok(s, `스케줄에 ${D1} 이 있어야 함`);
+  g('ROLES').forEach(r => eq(d.getElementById('rec-' + r.key).value, s[r.key], r.label));
+});
+
+t('R. 기록', 'R8 — 양도한 회차는 관람으로 치지 않음', () => {
+  reset();
+  const id = newBoard(1);
+  const recs = addRecordViaForm({
+    date: D1, time: T1, cast: { achilles: '박규원' }, boardId: id
+  });
+  eq(countOf(id), 1, '적립됨');
+  const r = W.getRecords()[0];
+  eq(W.watchedOnly([r]).length, 1, '아직 관람');
+  r.status = g('ST_TRANSFERRED');
+  eq(W.watchedOnly([r]).length, 0, '양도는 집계에서 빠져야 함');
+  eq(W.isTransferred(r), true);
+});
+
+// ── C. 할인 ───────────────────────────────────────────
+t('C. 할인', 'FATED 에는 쿠폰과 연결된 할인권이 없음', () => {
+  eq(g('DISCOUNT_COUPON_MAP'), {}, 'DISCOUNT_COUPON_MAP 이 비어 있어야 함');
+  eq(g('COUPON_ITEMS'), [], 'COUPON_ITEMS 가 비어 있어야 함');
+  eq(g('COUPON_PACKS'), {}, 'COUPON_PACKS 가 비어 있어야 함');
+});
+
+t('C. 할인', '할인 목록이 FATED 6종', () => {
+  const opts = [...W.document.getElementById('rec-discount-type').options]
+    .map(o => o.value).filter(Boolean);
+  ['정가','프리뷰 할인','1차 조기예매 할인','재관람 할인','학생 할인','장애인 할인','국가유공자 할인']
+    .forEach(o => ok(opts.includes(o), `${o} 누락`));
+  ['50% 실물 할인권','40% 실물 할인권','청소년 할인','직장인 할인','도서 소지 할인','SNS 친구 할인']
+    .forEach(o => ok(!opts.includes(o), `이끼숲 할인 '${o}' 잔존`));
+  opts.filter(o => o !== '정가').forEach(o =>
+    ok(g('DISCOUNT_LABEL')[o], `DISCOUNT_LABEL 에 '${o}' 없음`));
+});
+
+t('C. 할인', '할인율이 공식 안내와 일치', () => {
+  const R = g('DISCOUNT_RATE');
+  eq(R['프리뷰 할인'], 50);
+  eq(R['1차 조기예매 할인'], 20);
+  eq(R['재관람 할인'], 25);
+  eq(R['학생 할인'], 20);
+  eq(R['장애인 할인'], 50);
+  eq(R['국가유공자 할인'], 50);
+});
+
+t('C. 할인', 'C1 — 할인 선택해도 쿠폰 차감 없이 저장 (실물 할인권 없음)', () => {
+  reset();
+  const recs = addRecordViaForm({ date: D1, time: T1, discount: '재관람 할인' });
+  eq(recs.length, 1, '저장돼야 함');
+  eq(recs[0].discountType, '재관람 할인');
+});
+
+t('C. 할인', 'C2 — 차액 지불 체크가 기록에 남음', () => {
+  reset();
+  const recs = addRecordViaForm({
+    date: D1, time: T1, discount: '재관람 할인', paidDiff: true
+  });
+  eq(recs.length, 1, '차액 지불이면 저장돼야 함');
+  eq(recs[0].paidDiff, true, 'paidDiff 기록 — 증빙 미지참 시 정가 대비 차액');
+});
+
+// ── D. 데이터 ─────────────────────────────────────────
+t('D. 데이터', '스케줄 25회차 로드 (1차 오픈분)', () => {
+  const s = W.getSchedule();
+  eq(s.length, 25);
+  ok(s.every(x => g('ROLES').every(r => x[r.key] !== undefined)), '모든 회차에 3배역');
+});
+t('D. 데이터', '배우별 회차 합이 배역마다 25', () => {
+  const s = W.getSchedule();
+  g('ROLES').forEach(role => {
+    const total = role.actors.reduce((n, a) => n + s.filter(x => x[role.key] === a).length, 0);
+    eq(total, 25, role.label + ' 합계');
+  });
+});
+t('D. 데이터', '월요일 공연이 없음', () => {
+  const mon = W.getSchedule().filter(s => new Date(s.date + 'T00:00:00').getDay() === 1);
+  eq(mon.map(s => s.date), [], '월 공연없음 — 공식 고지');
+});
+t('D. 데이터', '11/18(수) 만 평일 2회 공연', () => {
+  const byDate = {};
+  W.getSchedule().forEach(s => { byDate[s.date] = (byDate[s.date] || 0) + 1; });
+  const twice = Object.keys(byDate).filter(d => byDate[d] === 2).sort();
+  const weekdayTwice = twice.filter(d => {
+    const w = new Date(d + 'T00:00:00').getDay();
+    return w >= 1 && w <= 5;   // 월~금
+  });
+  eq(weekdayTwice, ['2026-11-18'], '공식 고지에 없는 수요일 2회 공연 — 판독 결과');
+});
+t('D. 데이터', '이벤트 0건 (특전 미공개)', () => {
+  eq(W.getEvents().length, 0, '특전 안내가 나오면 events.json 을 채운다');
+});
+t('D. 데이터', '1차 오픈 기간이 2026-11-03 ~ 11-22', () => {
+  const d = W.getSchedule().map(s => s.date).sort();
+  eq(d[0], '2026-11-03');
+  eq(d[d.length - 1], '2026-11-22');
+});
+t('D. 데이터', '달력 기준월이 2026년 11월', () => {
+  W.initCal();
+  eq([g('calYear'), g('calMonth')], [2026, 10], '0-indexed 로 10 = 11월');
+});
+
+// ── 실행 ──────────────────────────────────────────────
+function run() {
+  let pass = 0, fail = 0;
+  const out = document.getElementById('results');
+  let lastGroup = null;
+  results.forEach(r => {
+    if (r.group !== lastGroup) {
+      const gEl = document.createElement('div');
+      gEl.className = 'grp'; gEl.textContent = r.group;
+      out.appendChild(gEl); lastGroup = r.group;
+    }
+    let err = null;
+    try { r.fn(); pass++; } catch (e) { err = e.message || String(e); fail++; }
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `<span class="tag ${err ? 'f' : 'p'}">${err ? 'FAIL' : 'PASS'}</span>`
+                  + `<span class="name">${r.name}${err ? `<div class="detail">${err}</div>` : ''}</span>`;
+    out.appendChild(row);
+  });
+  const sum = document.getElementById('summary');
+  sum.className = fail ? 'bad' : 'ok';
+  sum.textContent = `RESULT ${pass} passed, ${fail} failed`;
+  document.title = `SELFTEST ${pass} passed ${fail} failed`;
+}
+
+const frame = document.getElementById('app');
+frame.addEventListener('load', () => {
+  W = frame.contentWindow;
+  // schedule.json / events.json fetch 가 끝날 시간을 준다
+  const start = Date.now();
+  (function wait() {
+    const ready = W.getSchedule && W.getSchedule().length > 0;
+    if (ready || Date.now() - start > 6000) {
+      // headless 에는 confirm 에 답할 사람이 없어 영원히 멈춘다. 기본 거절로 스텁한다.
+      // (FATED 는 COUPON_PACKS 가 비어 쿠폰팩 confirm 자체가 안 뜨지만, 삭제 확인 등이 있다)
+      W.confirm = () => false;
+      W.alert   = () => {};
+      run();
+    } else setTimeout(wait, 150);
+  })();
+});
+</script>
+</body>
+</html>

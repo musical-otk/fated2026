@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>SHOTS</title>
+<style>
+  html,body{margin:0;padding:0;background:#fff;}
+  iframe{width:430px;height:932px;border:0;display:block;}
+</style>
+</head>
+<body>
+<iframe id="app" src="./index.html"></iframe>
+<script>
+/*
+  guide.html 용 스크린샷 촬영 하네스 (개발 도구, 배포 대상 아님).
+    _shots.html?tab=home | calendar | coupon | stats
+  index.html 을 iframe 으로 띄우고 샘플 기록을 심은 뒤 해당 탭으로 전환한다.
+  headless Chrome --screenshot 으로 캡처한다.
+*/
+const Q = new URLSearchParams(location.search);
+const TAB = Q.get('tab') || 'home';
+const THEME = Q.get('theme');   // 다크모드 대비는 자동 검사가 못 잡는다 (pitfalls §14)
+
+// 실제 schedule.json 의 캐스팅과 일치시킨 샘플 관람 기록
+const SAMPLE = [
+  { date:'2026-11-03', time:'20:00', achilles:'박규원', patroclus:'반정모', hector:'이동수',
+    seatFloor:'1층', seatZone:'C', seatNumber:12, price:66000, discountType:'프리뷰 할인', rating:5,
+    comment:'첫공. 세 사람 합이 미쳤다.' },
+  { date:'2026-11-07', time:'15:00', achilles:'박준형', patroclus:'반정모', hector:'신수빈',
+    seatFloor:'1층', seatZone:'F', seatNumber:4, price:33000, discountType:'프리뷰 할인', rating:5,
+    comment:'파트로클로스 넘버에서 울었음' },
+  { date:'2026-11-08', time:'18:00', achilles:'신주협', patroclus:'김재한', hector:'조민호',
+    seatFloor:'1층', seatZone:'K', seatNumber:15, price:66000, discountType:'정가', rating:4,
+    comment:'뒷열도 시야 괜찮다' },
+  { date:'2026-11-14', time:'19:00', achilles:'박규원', patroclus:'반정모', hector:'이동수',
+    seatFloor:'1층', seatZone:'A', seatNumber:10, price:49500, discountType:'재관람 할인', rating:5,
+    comment:'A열 10번 — 통로 옆' },
+  { date:'2026-11-18', time:'16:00', achilles:'박규원', patroclus:'조은성', hector:'조민호',
+    seatFloor:'1층', seatZone:'H', seatNumber:9, price:52800, discountType:'1차 조기예매 할인', rating:5,
+    comment:'수요일 낮공' }
+];
+
+function seed(W) {
+  // 기존 데이터 정리
+  Object.keys(W.localStorage)
+    .filter(k => k.startsWith('fated_') && !['fated_schedule','fated_events'].includes(k))
+    .forEach(k => W.localStorage.removeItem(k));
+
+  // 도장판 하나 만들고 앱 로직으로 도장을 찍어 카운트·마일스톤 정합성을 맞춘다
+  const board = { id: W.uuid(), name: '1', totalSlots: W.eval('DEFAULT_SLOTS'),
+                  milestones: W.defaultMilestones(), currentCount: 0, history: [] };
+  W.saveStampBoards([board]);
+
+  const now = new Date().toISOString();
+  const records = SAMPLE.map(s => Object.assign({
+    id: W.uuid(), isBooked: true, paidDiff: false, eungBingPassUsed: false,
+    doubleStampUsed: false, stampBoardId: board.id, stampQty: 1,
+    memo: '', createdAt: now, updatedAt: now
+  }, s));
+  W.saveRecords(records);
+
+  records.forEach(r => {
+    W.applyStampToBoard(board.id, 1, r.date, '관람 연동');
+    W.applyStampToBoard._lastOverflow = 0;
+    const bs = W.getStampBoards();
+    const b  = bs.find(x => x.id === board.id);
+    if (b?.history?.length) {
+      b.history[b.history.length - 1].recordId = r.id;
+      W.saveStampBoards(bs);
+    }
+  });
+}
+
+const frame = document.getElementById('app');
+frame.addEventListener('load', () => {
+  const W = frame.contentWindow;
+  const start = Date.now();
+  (function wait() {
+    const ready = W.getSchedule && W.getSchedule().length > 0;
+    if (!ready && Date.now() - start < 6000) return setTimeout(wait, 150);
+
+    seed(W);
+    if (THEME) {
+      W.document.documentElement.setAttribute('data-theme', THEME);
+      document.documentElement.setAttribute('data-theme', THEME);
+    }
+
+    // 상세 패널 (미니 좌석도 확인용)
+    if (TAB === 'detail') {
+      const home = W.document.querySelector(`.tab-btn[onclick*="'home'"]`);
+      if (home) W.switchTab('home', home);
+      const target = W.getRecords()[0];   // 단층 극장
+      W.openDetail(target.id);
+      document.title = 'SHOT detail';
+      return;
+    }
+
+    const btn = W.document.querySelector(`.tab-btn[onclick*="'${TAB}'"]`);
+    if (btn) W.switchTab(TAB, btn);
+
+    // 캘린더는 11월을 보여주고, 2회 공연인 날짜를 펼쳐 둔다
+    if (TAB === 'calendar') { W.initCal(); W.renderCalendar(); W.calDayClick('2026-11-07'); }
+    if (TAB === 'stats')    W.switchStatTab('heatmap', W.document.querySelector('.stats-subtab'));
+
+    document.title = 'SHOT ' + TAB;
+  })();
+});
+</script>
+</body>
+</html>

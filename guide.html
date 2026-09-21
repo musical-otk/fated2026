@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FATED 관극 다이어리 — 사용 가이드</title>
+<style>
+  :root{--bg:#F5F1E8;--bg2:#FFFFFF;--border:#DCD3C2;--text:#12161F;--text2:#414C63;--text3:#8A8374;--accent:#123A6B;--accent2:#B08D57;}
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);max-width:480px;margin:0 auto;}
+  .hero{background:linear-gradient(135deg,#1E3358 0%,#0A1628 100%);color:#fff;padding:36px 24px 28px;text-align:center;}
+  .hero h1{font-size:20px;font-weight:800;margin-bottom:4px;}
+  .hero p{font-size:12px;opacity:0.8;}
+  .section{padding:24px 20px 0;}
+  .section-title{font-size:16px;font-weight:700;margin-bottom:14px;}
+  .screen-card{background:var(--bg2);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px;box-shadow:0 2px 10px rgba(18,22,31,0.08);}
+  .screen-card img{width:100%;display:block;}
+  .screen-desc{padding:14px 16px;}
+  .screen-desc ul{list-style:none;}
+  .screen-desc li{font-size:12px;color:var(--text2);padding:3px 0 3px 12px;position:relative;line-height:1.6;}
+  .screen-desc li::before{content:'·';position:absolute;left:2px;color:var(--accent);font-weight:700;}
+  .feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;}
+  .feature-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 10px;}
+  .feature-icon{font-size:20px;margin-bottom:5px;}
+  .feature-name{font-size:12px;font-weight:700;margin-bottom:3px;}
+  .feature-desc{font-size:11px;color:var(--text3);line-height:1.5;}
+  .tip{background:var(--bg2);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:8px;font-size:12px;color:var(--text2);line-height:1.6;}
+  .tip b{color:var(--accent2);}
+  .install-box{background:var(--accent);color:#fff;border-radius:12px;padding:14px;margin-bottom:16px;text-align:center;}
+  .install-box .url{font-size:12px;font-weight:700;opacity:0.9;margin-top:5px;word-break:break-all;}
+  .footer{padding:28px 20px 40px;text-align:center;color:var(--text3);font-size:11px;line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>⚔️ FATED 관극 다이어리</h1>
+  <p>뮤지컬 〈FATED〉 2026-2027 관람 기록 앱</p>
+</div>
+<div class="section">
+  <div class="section-title">🎯 주요 기능</div>
+  <div class="feature-grid">
+    <div class="feature-item"><div class="feature-icon">📅</div><div class="feature-name">관람 기록</div><div class="feature-desc">캐스팅·좌석·별점·메모·사진</div></div>
+    <div class="feature-item"><div class="feature-icon">🗓</div><div class="feature-name">스케줄 캘린더</div><div class="feature-desc">전체 회차 + 배역별 필터</div></div>
+    <div class="feature-item"><div class="feature-icon">🎫</div><div class="feature-name">MANIA CARD</div><div class="feature-desc">7칸 도장판, 3·7회 혜택</div></div>
+    <div class="feature-item"><div class="feature-icon">😌</div><div class="feature-name">통계</div><div class="feature-desc">히트맵·배우별·조합별·지출</div></div>
+  </div>
+</div>
+<div class="section">
+  <div class="section-title">🏠 홈</div>
+  <div class="screen-card"><img src="sc_01_home.png" alt="홈" onerror="this.closest('.screen-card').style.display='none'">
+  <div class="screen-desc"><ul>
+    <li>다음 공연 D-day + 캐스팅·좌석</li>
+    <li>예정 일정 목록 (설정에서 표시 배역 선택)</li>
+    <li>MANIA CARD 현황</li>
+    <li>최근 관람 이력 + 마일스톤 달성 표시</li>
+  </ul></div></div>
+</div>
+<div class="section">
+  <div class="section-title">📅 캘린더</div>
+  <div class="screen-card"><img src="sc_02_calendar.png" alt="캘린더" onerror="this.closest('.screen-card').style.display='none'">
+  <div class="screen-desc"><ul>
+    <li>배역 탭 → 배우 선택 → 해당 회차 필터</li>
+    <li>✅ = 기록한 회차</li>
+    <li>날짜 클릭 → 회차 목록 + 기록 추가/상세</li>
+  </ul></div></div>
+</div>
+<div class="section">
+  <div class="section-title">🎫 MANIA CARD</div>
+  <div class="screen-card"><img src="sc_03_coupon.png" alt="쿠폰도장" onerror="this.closest('.screen-card').style.display='none'">
+  <div class="screen-desc"><ul>
+    <li>7칸 도장판 — 관람 1회당 도장 1개</li>
+    <li>3회 달성 → 🎴 포토카드 9종</li>
+    <li>7회 달성 → 📸 지정 폴라로이드 1장 + 💿 실황 OST</li>
+    <li>이력 패널에서 달성 날짜·혜택 변경</li>
+    <li>이 작품은 실물 할인권·쿠폰이 없어 쿠폰 현황은 비어 있습니다</li>
+  </ul></div></div>
+</div>
+<div class="section">
+  <div class="section-title">😌 통계</div>
+  <div class="screen-card"><img src="sc_04_stats.png" alt="통계" onerror="this.closest('.screen-card').style.display='none'">
+  <div class="screen-desc"><ul>
+    <li><b>히트맵</b> — 좌석 방문 횟수 (단층 A~L열)</li>
+    <li><b>배우별</b> — 역할별 관람 횟수</li>
+    <li><b>조합별</b> — 3×3×3 전체 조합, 행 클릭 시 날짜 목록</li>
+    <li><b>지출</b> — 총 지출 / 평균 티켓가</li>
+  </ul></div></div>
+</div>
+<div class="section">
+  <div class="section-title">📝 팁</div>
+  <div class="tip"><b>스케줄 연동</b> — 날짜 클릭 → 회차 옆 "+ 기록"으로 캐스팅 자동 입력</div>
+  <div class="tip"><b>MANIA CARD</b> — 기록 저장 시 도장판 선택하면 자동 도장. 7칸 초과 시 새 카드 자동 생성 (기존 카드에 합산 불가)</div>
+  <div class="tip"><b>현장 규칙</b> — 발급·날인은 MD부스에서 공연 시작 1시간 전 ~ 10분 전, 종료 후 10분까지. 당일 카드 미지참 시 적립 불가</div>
+  <div class="tip"><b>양도</b> — 표는 있었지만 못 본 회차는 "양도"로 표시. 도장·통계·지출에서 빠집니다</div>
+  <div class="tip"><b>사진 첨부</b> — 원본 화질 저장. 탭: 전체화면 / 두 번 탭: 가로 꽉채움</div>
+  <div class="tip"><b>데이터 백업</b> — 설정 → JSON 내보내기/가져오기. 사진 포함 옵션 있음</div>
+</div>
+<div class="section">
+  <div class="section-title">📱 앱 설치 (PWA)</div>
+  <div class="install-box">
+    <div style="font-size:13px;font-weight:700;">Safari / Chrome 접속 후 공유 → "홈 화면에 추가"</div>
+    <div class="url">musical-otk.github.io/fated2026/</div>
+  </div>
+  <div class="tip">설치 후 앱처럼 전체화면 실행. 데이터는 기기에만 저장, 오프라인 사용 가능</div>
+</div>
+<div class="footer">
+  ⚔️ FATED · 링크아트센터드림 드림2관<br>
+  2026.11.03 ~ 2027.01.24<br><br>
+  문의·피드백 → <a href="https://x.com/zen__ym" style="color:var(--accent);">𝕏 @zen__ym</a>
+</div>
+</body>
+</html>

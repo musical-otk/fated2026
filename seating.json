@@ -1,0 +1,50 @@
+{
+  "venue": "링크아트센터드림 드림2관",
+  "totalSeats": 211,
+  "source": "공식 SEAT PLAN 이미지 (x.com/Knowerscompany/status/2100087555480011232, 4번째 이미지)",
+  "verification": "극장 공표 객석수 미확보 — 대조하지 못함. 공식 계정 좌석도를 기준으로 삼는다. 5구역 확대 판독으로 열별 번호 범위를 재확인함.",
+
+  "_model": {
+    "note": "각 열의 좌석번호는 연속 구간이며, 통로는 시각적 분리일 뿐 번호를 끊지 않는다.",
+    "row": "열 문자",
+    "first": "그 열의 첫 좌석번호",
+    "last": "그 열의 마지막 좌석번호",
+    "unavailable": "회색 처리된 미판매석",
+    "aisleAfter": "이 좌석번호 뒤에 통로가 온다 (렌더링용). 열 묶음마다 위치가 다르다"
+  },
+
+  "floors": [
+    {
+      "name": "1층",
+      "grade": "R석",
+      "price": 66000,
+      "seatCount": 211,
+      "rows": [
+        { "row": "A", "first": 1, "last": 20, "aisleAfter": 10, "unavailable": [1, 2, 19, 20] },
+        { "row": "B", "first": 1, "last": 19, "aisleAfter": 10, "unavailable": [1, 19] },
+        { "row": "C", "first": 1, "last": 20, "aisleAfter": 10, "unavailable": [1] },
+        { "row": "D", "first": 1, "last": 19, "aisleAfter": 10, "unavailable": [] },
+        { "row": "E", "first": 1, "last": 17, "aisleAfter": 7,  "unavailable": [] },
+        { "row": "F", "first": 1, "last": 17, "aisleAfter": 7,  "unavailable": [] },
+        { "row": "G", "first": 1, "last": 17, "aisleAfter": 7,  "unavailable": [] },
+        { "row": "H", "first": 1, "last": 19, "aisleAfter": 9,  "unavailable": [] },
+        { "row": "I", "first": 1, "last": 19, "aisleAfter": 9,  "unavailable": [] },
+        { "row": "J", "first": 1, "last": 19, "aisleAfter": 9,  "unavailable": [] },
+        { "row": "K", "first": 1, "last": 18, "aisleAfter": 9,  "unavailable": [] },
+        { "row": "L", "first": 1, "last": 7,  "aisleAfter": 7,  "unavailable": [1, 2, 3, 4, 5, 6, 7] }
+      ]
+    }
+  ],
+
+  "zones": {
+    "note": "index.html 의 FLOOR_ZONES 와 같은 값이어야 한다. 좌 구역은 통로 쪽에 붙어 끝나고 우 구역은 통로 쪽에서 시작하므로 align 은 edge.",
+    "1층": { "l": 10, "m": 0, "r": 10, "align": "edge" }
+  },
+
+  "summary": {
+    "physical": 211,
+    "unavailable": 14,
+    "onSale": 197,
+    "unavailableDetail": "A1·A2·A19·A20 (4) · B1·B19 (2) · C1 (1) · L열 전체 (7)"
+  }
+}
