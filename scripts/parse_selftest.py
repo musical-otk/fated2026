@@ -5,7 +5,24 @@ import sys
 from html import unescape
 from pathlib import Path
 
+# 출력 인코딩은 호출자가 정한다 (run_tests.ps1 이 PYTHONIOENCODING 과
+# [Console]::OutputEncoding 을 함께 UTF-8 로 맞춘다). 여기서 encoding 을 강제하면
+# cp949 콘솔에서 한글이 전부 깨진다.
+# 다만 '—'(em-dash)처럼 cp949 에 없는 글자 하나 때문에 검사가 통째로 죽는 일은 막는다.
+try:
+    sys.stdout.reconfigure(errors="replace")
+    sys.stderr.reconfigure(errors="replace")
+except (AttributeError, ValueError):
+    pass
+
+if len(sys.argv) < 2:
+    print("사용: python parse_selftest.py <selftest 덤프.html>")
+    raise SystemExit(2)
+
 path = Path(sys.argv[1])
+if not path.exists():
+    print(f"덤프 파일이 없습니다: {path}")
+    raise SystemExit(2)
 html = path.read_text(encoding="utf-8", errors="replace")
 
 summary = re.search(r'id="summary"[^>]*>([^<]*)<', html)

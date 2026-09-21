@@ -16,7 +16,10 @@ $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $parent = Split-Path $root -Parent
 $name = Split-Path $root -Leaf
+# 파이썬 쪽만 UTF-8 로 맞추면 PowerShell 이 그 바이트를 콘솔 코드페이지(cp949)로
+# 읽어 한글이 깨진다. 양쪽을 같이 맞춰야 한다.
 $env:PYTHONIOENCODING = 'utf-8'
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' +
             [Environment]::GetEnvironmentVariable('Path','User')
 
