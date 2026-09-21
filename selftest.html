@@ -350,6 +350,37 @@ t('C. 할인', 'C2 — 차액 지불 체크가 기록에 남음', () => {
   eq(recs[0].paidDiff, true, 'paidDiff 기록 — 증빙 미지참 시 정가 대비 차액');
 });
 
+t('C. 할인', '쿠폰 현황은 접혀 있고, 펼치면 사유가 보인다', () => {
+  reset();
+  W.renderCouponList();
+  const wrap = W.document.getElementById('coupon-wrap');
+  const icon = W.document.getElementById('coupon-toggle-icon');
+  ok(wrap, '#coupon-wrap 없음');
+  eq(wrap.style.display, 'none', '쿠폰이 없는 작품이므로 기본은 접힘');
+  eq(icon.textContent, '▼');
+
+  const html = W.document.getElementById('coupon-list').innerHTML;
+  ok(/MANIA CARD/.test(html), '왜 비어 있는지 설명해야 함');
+  ok(/쿠폰팩/.test(html), '쿠폰팩 배포 가능성을 안내해야 함');
+  ok(!/할인권·쿠폰이 없습니다/.test(html), '옛 문구 잔존');
+
+  W.toggleCouponSection();
+  eq(wrap.style.display, '', '펼쳐져야 함');
+  eq(icon.textContent, '▲');
+  W.toggleCouponSection();
+  eq(wrap.style.display, 'none', '다시 접혀야 함');
+});
+
+t('U. 좌석', '공식 좌석도와 같은 자리에서 행이 끊긴다 (D·K 다음)', () => {
+  eq(g('SEAT_PLAN')['1층'].gapAfter, ['D', 'K'], '공식 좌석도의 행 간격');
+});
+
+t('E. 개조 정합성', '배역 라벨 폭이 가장 긴 배역명에 맞춰져 있다', () => {
+  const longest = Math.max(...g('ROLES').map(r => r.label.length));
+  eq(W.roleLabelWidth(), `calc(${longest}em + 2px)`, "'전체' 칩 시작 위치가 어긋나면 안 됨");
+  eq(longest, 6, '파트로클로스가 가장 길다');
+});
+
 // ── D. 데이터 ─────────────────────────────────────────
 t('D. 데이터', '스케줄 25회차 로드 (1차 오픈분)', () => {
   const s = W.getSchedule();

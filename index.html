@@ -177,6 +177,7 @@
   .heatmap-legend{display:flex;gap:10px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
   .hm-floor-label{font-size:11px;font-weight:700;color:var(--text2);padding:2px 0 5px;}
   .hm-floor-gap{height:14px;}
+  .hm-row-gap{height:9px;}
   .stats-subtabs{display:flex;gap:0;margin-bottom:14px;background:var(--bg3);border-radius:10px;padding:3px;}
   .stats-subtab{flex:1;padding:8px 4px;border-radius:8px;border:none;background:none;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;font-family:inherit;}
   .stats-subtab.active{background:var(--bg2);color:var(--text1);font-weight:700;box-shadow:var(--shadow);}
@@ -373,8 +374,13 @@
     <button class="btn btn-outline btn-sm" onclick="openAddStampBoard()">+ 도장판</button>
   </div>
   <div class="card" style="margin-bottom:16px;">
-    <div class="card-title">쿠폰 현황</div>
-    <div id="coupon-list"></div>
+    <div class="card-title" onclick="toggleCouponSection()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+      <span>🎟 쿠폰 현황</span>
+      <span id="coupon-toggle-icon" style="font-size:11px;color:var(--text3);">▼</span>
+    </div>
+    <div id="coupon-wrap" style="display:none;">
+      <div id="coupon-list" style="margin-top:10px;"></div>
+    </div>
   </div>
   <div class="section-title" style="margin-bottom:8px;">MANIA CARD (재관람 카드)</div>
   <div id="stamp-boards-list" style="margin-bottom:16px;"></div>
@@ -1219,7 +1225,7 @@ function saveStampBoards(s) { DB.set('stamp_boards', s); }
 const SEAT_PLAN = {
   '1층': {
     rows: ['A','B','C','D','E','F','G','H','I','J','K','L'],
-    gapAfter: null,
+    gapAfter: ['D', 'K'],   // 공식 좌석도의 행 간격 (D 다음, K 다음)
     def: {
       A: { l:[1,10], m:null, r:[11,20] },
       B: { l:[1,10], m:null, r:[11,19] },
@@ -2019,7 +2025,7 @@ function buildMiniSeat(floor, rowKey, num) {
   let html = '<div style="overflow-x:auto;margin:8px 0;"><div style="display:flex;flex-direction:column;gap:2px;width:max-content;margin:0 auto;">';
   let prevRow = null;
   plan.rows.forEach(r => {
-    if (plan.gapAfter && prevRow === plan.gapAfter) html += '<div style="height:3px;"></div>';
+    if (prevRow && (plan.gapAfter || []).includes(prevRow)) html += '<div style="height:7px;"></div>';
     prevRow = r;
     const cfg = plan.def[r];
     if (!cfg) return;
@@ -2461,6 +2467,13 @@ function selectCalRole(role, btn) {
 }
 
 // 열린 배역들의 배우 칩 렌더 (배역별 row)
+// 배역명 길이가 제각각이라 라벨 폭을 고정해야 칩('전체')의 시작 위치가 맞는다.
+// 한글은 대체로 1em 폭이라 가장 긴 배역명의 글자 수를 그대로 em 으로 쓴다.
+function roleLabelWidth() {
+  const n = Math.max(...ROLES.map(r => r.label.length));
+  return `calc(${n}em + 2px)`;
+}
+
 function renderAllActorChips() {
   const container = document.getElementById('cal-actor-chips');
   if (!container) return;
@@ -2480,7 +2493,7 @@ function renderAllActorChips() {
           `<button class="cal-chip${cur===a?' active':''}" onclick="setCalFilterFromTab('${roleData.key}','${a}')">${a}</button>`
         ).join('');
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
-        <span style="font-size:11px;color:var(--accent);font-weight:700;min-width:44px;flex-shrink:0;">${roleData.label}</span>
+        <span style="font-size:11px;color:var(--accent);font-weight:700;width:${roleLabelWidth()};flex-shrink:0;">${roleData.label}</span>
         <div style="display:flex;gap:5px;flex-wrap:wrap;">${chips}</div>
       </div>`;
     }).join('');
@@ -2881,9 +2894,13 @@ function renderHeatmap() {
     const grade = 'R석';   // 전석 단일 등급
     let html = `<div class="hm-floor-label">${first}~${last}열 · ${grade}</div>`;   // 단층이라 층 이름 생략
 
+    let prevRow = null;
     plan.rows.forEach(rowKey => {
       const cfg = plan.def[rowKey];
       if (!cfg) return;
+      // 공식 좌석도와 같은 자리에 한 줄을 비운다 (미니 좌석도와 같은 gapAfter 를 쓴다)
+      if (prevRow && (plan.gapAfter || []).includes(prevRow)) html += '<div class="hm-row-gap"></div>';
+      prevRow = rowKey;
       html += `<div class="hm-row"><div class="hm-label">${rowKey}</div><div style="width:${4 + lead}px;flex-shrink:0;"></div>`;
       // 좌 구역: 모든 열이 통로 쪽에서 끝나므로 오른쪽 끝 정렬 (···●)
       html += mkZone(rowKey, cfg.l, MAX.l, true);
@@ -2907,8 +2924,24 @@ function renderHeatmap() {
 // ============================================================
 function renderCoupon() { renderStampBoards(); renderCouponList(); }
 
+function toggleCouponSection() {
+  const wrap = document.getElementById('coupon-wrap');
+  const icon = document.getElementById('coupon-toggle-icon');
+  if (!wrap) return;
+  const willOpen = wrap.style.display === 'none';
+  wrap.style.display = willOpen ? '' : 'none';
+  if (icon) icon.textContent = willOpen ? '▲' : '▼';
+  DB.set('couponSectionCollapsed', !willOpen);
+}
+
 function renderCouponList() {
   const coupons = getCoupons();
+  // 쿠폰이 없는 작품이라 기본은 접어둔다. 쿠폰팩이 생기면 펼친 상태로 시작한다.
+  const collapsed = DB.get('couponSectionCollapsed', COUPON_ITEMS.length === 0);
+  const cw = document.getElementById('coupon-wrap');
+  const ci = document.getElementById('coupon-toggle-icon');
+  if (cw) cw.style.display = collapsed ? 'none' : '';
+  if (ci) ci.textContent   = collapsed ? '▼' : '▲';
   const boards  = getStampBoards();
   const records = watchedOnly(getRecords());   // 양도 제외
   const today   = localDate();
@@ -2950,9 +2983,10 @@ function renderCouponList() {
 
   document.getElementById('coupon-list').innerHTML = COUPON_ITEMS.length
     ? `<div class="coupon-cards">${mainItems.map(couponCardHtml).join('')}</div>${dsRow}`
-    : `<div style="font-size:12px;color:var(--text3);text-align:center;padding:16px 8px;line-height:1.7;">
-         뮤지컬 〈FATED〉 는 실물 할인권·쿠폰이 없습니다.<br>
-         재관람 혜택은 아래 <b>MANIA CARD</b> 도장판으로 관리합니다.
+    : `<div style="font-size:12px;color:var(--text3);padding:6px 4px 10px;line-height:1.8;">
+         <b>MANIA CARD</b> 로 받는 혜택(포토카드·폴라로이드·실황 OST)은 모두 실물 굿즈라
+         쿠폰으로 관리할 것이 없습니다.<br>
+         제작사가 <b>쿠폰팩(할인권 등)</b>을 배포하면 여기에 추가할 수 있습니다.
        </div>`;
 
 }

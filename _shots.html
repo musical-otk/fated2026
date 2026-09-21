@@ -99,7 +99,13 @@ frame.addEventListener('load', () => {
     if (btn) W.switchTab(TAB, btn);
 
     // 캘린더는 11월을 보여주고, 2회 공연인 날짜를 펼쳐 둔다
-    if (TAB === 'calendar') { W.initCal(); W.renderCalendar(); W.calDayClick('2026-11-07'); }
+    if (TAB === 'calendar') {
+      W.initCal(); W.renderCalendar(); W.calDayClick('2026-11-07');
+      // ?roles=open — 배역 필터를 펼친 상태로 찍는다 (칩 정렬 확인용)
+      if (Q.get('roles') === 'open') {
+        W.document.querySelectorAll('#cal-role-tabs .cal-role-tab').forEach(b => W.selectCalRole(b.dataset.role, b));
+      }
+    }
     if (TAB === 'stats')    W.switchStatTab('heatmap', W.document.querySelector('.stats-subtab'));
 
     document.title = 'SHOT ' + TAB;
