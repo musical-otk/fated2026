@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>⚔️ FATED 관극 다이어리</title>
+<title>🗡️ FATED 관극 다이어리</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#12161F">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -234,7 +234,7 @@
 
   /* HOME */
   .next-show-card{background:linear-gradient(135deg,#1E3358 0%,#0A1628 100%);border-radius:var(--radius);padding:18px;margin-bottom:8px;color:#fff;position:relative;overflow:hidden;cursor:pointer;}
-  .next-show-card::before{content:'⚔️';position:absolute;right:14px;top:10px;font-size:44px;opacity:0.12;}
+  .next-show-card::before{content:'🗡️';position:absolute;right:14px;top:10px;font-size:44px;opacity:0.12;}
   .next-show-dday{font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:4px;}
   .next-show-dday.today-dday{color:#ffe066;}
   .next-show-date{font-size:13px;opacity:0.85;margin-bottom:8px;}
@@ -303,7 +303,7 @@
 <!-- ========== HOME ========== -->
 <div class="page active" id="page-home">
   <div class="page-header">
-    <div class="page-title">⚔️ FATED</div>
+    <div class="page-title">🗡️ FATED</div>
     <button class="btn btn-primary btn-sm" onclick="openAddRecord()">+ 기록</button>
   </div>
   <div id="home-next-show"></div>
@@ -2330,7 +2330,7 @@ function renderHome() {
         ${seat ? `<div class="next-show-seat">${seat}</div>` : ''}
       </div>`;
   } else {
-    nextEl.innerHTML = `<div class="card" style="text-align:center;color:var(--text3);padding:20px;"><div style="font-size:28px;margin-bottom:6px;">⚔️</div><div style="font-size:13px;">예매 확정된 일정이 없습니다</div></div>`;
+    nextEl.innerHTML = `<div class="card" style="text-align:center;color:var(--text3);padding:20px;"><div style="font-size:28px;margin-bottom:6px;">🗡️</div><div style="font-size:13px;">예매 확정된 일정이 없습니다</div></div>`;
   }
 
   // ② 예정 일정 리스트
