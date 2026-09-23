@@ -37,17 +37,31 @@ def main() -> None:
     top = int((h - side) * args.anchor)
     square = im.crop((left, top, left + side, top + side))
 
-    for size in (192, 512):
+    # 180 은 iOS 가 홈 화면 아이콘으로 쓰는 크기다 (apple-touch-icon).
+    # 이 파일과 선언이 없으면 브라우저가 오리진 루트로 폴백해
+    # 다른 작품 아이콘이 나온다 — pitfalls §25.
+    targets = [(180, "apple-touch-icon.png"), (192, "icon-192.png"), (512, "icon-512.png")]
+
+    for size, fname in targets:
         icon = square.resize((size, size), Image.LANCZOS)
         # sw.js 가 아이콘을 프리캐시하므로 용량을 줄인다.
         # 아이콘 크기에서는 팔레트 양자화로 인한 화질 차이가 보이지 않는다.
         icon = icon.quantize(colors=256, method=Image.MEDIANCUT,
                              dither=Image.FLOYDSTEINBERG)
-        path = out / f"icon-{size}.png"
+        path = out / fname
         icon.save(path, "PNG", optimize=True)
-        print(f"  {path.name}  {size}x{size}  {path.stat().st_size / 1024:.1f}KB")
+        print(f"  {path.name:22s} {size}x{size}  {path.stat().st_size / 1024:.1f}KB")
 
-    print("\n아이콘을 바꿨으면 sw.js 의 CACHE_NAME 을 올려야 기존 사용자에게 반영된다.")
+    print("""
+다음을 확인할 것:
+  1. index.html 의 <title> 뒤에 아이콘 선언이 있는가
+       <link rel="icon" type="image/png" href="icon-192.png">
+       <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+     없으면 오리진 루트로 폴백해 다른 작품 아이콘이 나온다 (pitfalls §25).
+  2. manifest.json 의 icons 에 180x180 이 있는가
+  3. sw.js 의 PRECACHE_URLS 에 apple-touch-icon.png 를 넣고 CACHE_NAME 을 올렸는가
+
+이미 홈 화면에 추가한 기기는 지우고 다시 추가해야 아이콘이 바뀐다.""")
 
 
 if __name__ == "__main__":

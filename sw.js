@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fated2026-v4';
+const CACHE_NAME = 'fated2026-v5';
 const BASE = '/fated2026';
 
 const PRECACHE_URLS = [
@@ -7,6 +7,7 @@ const PRECACHE_URLS = [
   BASE + '/manifest.json',
   BASE + '/icon-192.png',
   BASE + '/apple-touch-icon.png',
+  BASE + '/favicon.ico',
   BASE + '/icon-512.png',
 ];
 
