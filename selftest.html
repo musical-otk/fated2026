@@ -43,6 +43,40 @@ const g = n => W.eval(n);
 // 시나리오마다 저장소를 비워 순서 의존성을 없앤다.
 // 단, fetch 로 받아온 schedule/events 는 남긴다 (지우면 이후 데이터 검사가 깨진다)
 const KEEP = ['fated_schedule', 'fated_events'];
+
+// ── 실제 기록 보호 ──
+// 테스트는 시나리오마다 저장소를 비운다(reset). 이 페이지는 앱과 같은 주소 = 같은 저장소라서,
+// 앱을 쓰는 브라우저로 열면 그 앱 기록이 지워진다. 그래서 실행 전에 통째로 백업했다가 끝나면 되돌린다.
+// 도중에 창이 닫혀도 백업은 접두사 밖 키에 남아 있어, 다음에 이 페이지를 열면 그것부터 되돌린다.
+const PREFIX = KEEP[0].slice(0, KEEP[0].indexOf('_') + 1);
+const BACKUP_KEY = 'selftest_backup_' + PREFIX;
+function snapshot(ls) {
+  const o = {};
+  Object.keys(ls).filter(k => k.startsWith(PREFIX)).forEach(k => { o[k] = ls.getItem(k); });
+  return o;
+}
+function restore(ls, o) {
+  Object.keys(ls).filter(k => k.startsWith(PREFIX)).forEach(k => ls.removeItem(k));
+  Object.entries(o).forEach(([k, v]) => ls.setItem(k, v));
+}
+(function recoverLeftover() {
+  const left = localStorage.getItem(BACKUP_KEY);
+  if (!left) return;
+  try { restore(localStorage, JSON.parse(left)); } catch (e) {}
+  localStorage.removeItem(BACKUP_KEY);
+})();
+function guardedRun() {
+  // 배포 주소에서는 한 번 더 묻는다 (배포 후 확인은 ?live=1 로 빈 브라우저에서 돌린다)
+  const live = /github\.io$/.test(location.hostname) && !/[?&]live=1\b/.test(location.search);
+  if (live && !window.confirm('테스트용 페이지입니다.\n이 브라우저의 관람 기록은 백업했다가 끝나면 되돌리지만,\n실행 중에 창을 닫으면 이 페이지를 다시 열어야 복구됩니다.\n\n계속할까요?')) {
+    document.getElementById('summary').textContent = '실행하지 않았습니다';
+    return;
+  }
+  const saved = snapshot(localStorage);
+  localStorage.setItem(BACKUP_KEY, JSON.stringify(saved));
+  try { run(); }
+  finally { restore(localStorage, saved); localStorage.removeItem(BACKUP_KEY); }
+}
 function reset() {
   const ls = W.localStorage;
   Object.keys(ls)
@@ -458,7 +492,7 @@ frame.addEventListener('load', () => {
       // (FATED 는 COUPON_PACKS 가 비어 쿠폰팩 confirm 자체가 안 뜨지만, 삭제 확인 등이 있다)
       W.confirm = () => false;
       W.alert   = () => {};
-      run();
+      guardedRun();
     } else setTimeout(wait, 150);
   })();
 });
