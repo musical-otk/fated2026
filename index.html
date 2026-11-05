@@ -637,11 +637,13 @@
         <option value="">없음 (일반)</option>
         <option value="정가">정가</option>
         <option value="프리뷰 할인">프리뷰 할인 (50%)</option>
-        <option value="1차 조기예매 할인">1차 조기예매 할인 (20%)</option>
+        <option value="조기예매 할인">조기예매 할인 (20%)</option>
+        <option value="마티네 할인">마티네 할인 (30%)</option>
         <option value="재관람 할인">재관람 할인 (25%)</option>
         <option value="학생 할인">학생 할인 (20%)</option>
         <option value="장애인 할인">장애인 할인 (50%)</option>
         <option value="국가유공자 할인">국가유공자 할인 (50%)</option>
+        <option value="타임세일">타임세일</option>
       </select>
       <div id="rec-discount-warn" style="display:none;margin-top:6px;font-size:12px;color:var(--danger);">⚠ 현재 보유한 쿠폰이 없습니다</div>
     </div>
@@ -1162,7 +1164,17 @@ function uuid() { return Date.now().toString(36) + Math.random().toString(36).sl
 // ============================================================
 // DATA GETTERS / SETTERS
 // ============================================================
-function getRecords()     { return DB.get('records', []); }
+// 할인 이름을 바꿔도 예전 기록이 새 이름으로 잡히게 한다 (옛 이름 → 지금 이름)
+// 차수별 이름(1차·2차·마지막)은 하나로 합친다 — 회차가 열릴 때마다 목록이 늘지 않게
+const DISCOUNT_RENAMES = {
+  '1차 조기예매 할인': '조기예매 할인',
+  '2차 조기예매 할인': '조기예매 할인',
+};
+function normalizeDiscount(r) {
+  const to = r && DISCOUNT_RENAMES[r.discountType];
+  return to ? { ...r, discountType: to } : r;
+}
+function getRecords()     { return DB.get('records', []).map(normalizeDiscount); }
 function saveRecords(r)   { DB.set('records', r); }
 function getSchedule()    { return DB.get('schedule', []); }
 function saveSchedule(s)  { DB.set('schedule', s); }
@@ -1291,15 +1303,17 @@ const DISCOUNT_COUPON_MAP = {};
 const DISCOUNT_LABEL = {
   '정가':              '정가',
   '프리뷰 할인':       '프리뷰 할인 (50%)',
-  '1차 조기예매 할인': '1차 조기예매 할인 (20%)',
+  '조기예매 할인':     '조기예매 할인 (20%)',
+  '마티네 할인':       '마티네 할인 (30%)',
   '재관람 할인':       '재관람 할인 (25%)',
   '학생 할인':         '학생 할인 (20%)',
   '장애인 할인':       '장애인 할인 (50%)',
-  '국가유공자 할인':   '국가유공자 할인 (50%)'
+  '국가유공자 할인':   '국가유공자 할인 (50%)',
+  '타임세일':          '타임세일'   // 율이 매번 달라 % 없음
 };
 // 할인율 — 절감액 계산용 (정가: 전석 R석 66,000원 단일 등급)
 const DISCOUNT_RATE = {
-  '프리뷰 할인': 50, '1차 조기예매 할인': 20, '재관람 할인': 25,
+  '프리뷰 할인': 50, '조기예매 할인': 20, '마티네 할인': 30, '재관람 할인': 25,
   '학생 할인': 20, '장애인 할인': 50, '국가유공자 할인': 50
 };
 // FATED 는 쿠폰이 없다 — MANIA CARD 보상이 전부 실물 굿즈다.
@@ -1412,6 +1426,9 @@ function migrateData() {
     if (coupons[key].history.length !== before) changed = true;
   });
   if (changed) saveCoupons(coupons);
+  // 저장된 기록의 옛 할인 이름도 고쳐 둔다 (허브 등 저장소를 직접 읽는 쪽 대비)
+  const raw = DB.get('records', []);
+  if (raw.some(r => DISCOUNT_RENAMES[r.discountType])) saveRecords(raw.map(normalizeDiscount));
 }
 
 // ============================================================

@@ -347,11 +347,13 @@ t('C. 할인', 'FATED 에는 쿠폰과 연결된 할인권이 없음', () => {
   eq(g('COUPON_PACKS'), {}, 'COUPON_PACKS 가 비어 있어야 함');
 });
 
-t('C. 할인', '할인 목록이 FATED 6종', () => {
+t('C. 할인', '할인 목록이 FATED 7종 + 타임세일', () => {
   const opts = [...W.document.getElementById('rec-discount-type').options]
     .map(o => o.value).filter(Boolean);
-  ['정가','프리뷰 할인','1차 조기예매 할인','재관람 할인','학생 할인','장애인 할인','국가유공자 할인']
+  ['정가','프리뷰 할인','조기예매 할인','마티네 할인','재관람 할인','학생 할인','장애인 할인','국가유공자 할인','타임세일']
     .forEach(o => ok(opts.includes(o), `${o} 누락`));
+  ok(!opts.some(o => /^\d차 /.test(o)), '차수 붙은 할인 이름 잔존');
+  eq(opts[opts.length - 1], '타임세일', '타임세일은 맨 끝');
   ['50% 실물 할인권','40% 실물 할인권','청소년 할인','직장인 할인','도서 소지 할인','SNS 친구 할인']
     .forEach(o => ok(!opts.includes(o), `이끼숲 할인 '${o}' 잔존`));
   opts.filter(o => o !== '정가').forEach(o =>
@@ -361,7 +363,8 @@ t('C. 할인', '할인 목록이 FATED 6종', () => {
 t('C. 할인', '할인율이 공식 안내와 일치', () => {
   const R = g('DISCOUNT_RATE');
   eq(R['프리뷰 할인'], 50);
-  eq(R['1차 조기예매 할인'], 20);
+  eq(R['조기예매 할인'], 20);
+  eq(R['마티네 할인'], 30);
   eq(R['재관람 할인'], 25);
   eq(R['학생 할인'], 20);
   eq(R['장애인 할인'], 50);
@@ -415,24 +418,35 @@ t('E. 개조 정합성', '배역 라벨 폭이 가장 긴 배역명에 맞춰져
   eq(longest, 6, '파트로클로스가 가장 길다');
 });
 
+t('C. 할인', "옛 이름 '1차·2차 조기예매 할인' 기록이 '조기예매 할인'으로 읽힘", () => {
+  reset();
+  W.saveRecords([
+    { id: W.uuid(), date: '2026-11-10', time: '20:00', discountType: '1차 조기예매 할인', price: 52800 },
+    { id: W.uuid(), date: '2026-11-24', time: '20:00', discountType: '2차 조기예매 할인', price: 52800 },
+  ]);
+  eq(W.getRecords().map(r => r.discountType), ['조기예매 할인', '조기예매 할인'], '읽을 때');
+  W.migrateData();
+  eq(JSON.parse(W.localStorage.getItem('fated_records')).map(r => r.discountType), ['조기예매 할인', '조기예매 할인'], '저장소에도 반영');
+});
+
 // ── D. 데이터 ─────────────────────────────────────────
-t('D. 데이터', '스케줄 25회차 로드 (1차 오픈분)', () => {
+t('D. 데이터', '스케줄 52회차 로드 (1차 25 + 2차 27)', () => {
   const s = W.getSchedule();
-  eq(s.length, 25);
+  eq(s.length, 52);
   ok(s.every(x => g('ROLES').every(r => x[r.key] !== undefined)), '모든 회차에 3배역');
 });
-t('D. 데이터', '배우별 회차 합이 배역마다 25', () => {
+t('D. 데이터', '배우별 회차 합이 배역마다 52', () => {
   const s = W.getSchedule();
   g('ROLES').forEach(role => {
     const total = role.actors.reduce((n, a) => n + s.filter(x => x[role.key] === a).length, 0);
-    eq(total, 25, role.label + ' 합계');
+    eq(total, 52, role.label + ' 합계');
   });
 });
 t('D. 데이터', '월요일 공연이 없음', () => {
   const mon = W.getSchedule().filter(s => new Date(s.date + 'T00:00:00').getDay() === 1);
   eq(mon.map(s => s.date), [], '월 공연없음 — 공식 고지');
 });
-t('D. 데이터', '11/18(수) 만 평일 2회 공연', () => {
+t('D. 데이터', '평일 2회 공연은 수요일뿐 (11/18 + 2차 매주 수)', () => {
   const byDate = {};
   W.getSchedule().forEach(s => { byDate[s.date] = (byDate[s.date] || 0) + 1; });
   const twice = Object.keys(byDate).filter(d => byDate[d] === 2).sort();
@@ -440,19 +454,21 @@ t('D. 데이터', '11/18(수) 만 평일 2회 공연', () => {
     const w = new Date(d + 'T00:00:00').getDay();
     return w >= 1 && w <= 5;   // 월~금
   });
-  eq(weekdayTwice, ['2026-11-18'], '공식 고지에 없는 수요일 2회 공연 — 판독 결과');
+  eq(weekdayTwice, ['2026-11-18', '2026-11-25', '2026-12-02', '2026-12-09'], '수 4시·8시 — 2차 고지');
 });
-t('D. 데이터', '이벤트 0건 (특전 미공개)', () => {
-  eq(W.getEvents().length, 0, '특전 안내가 나오면 events.json 을 채운다');
+t('D. 데이터', '이벤트 4건 (11월 이벤트 캘린더)', () => {
+  eq(W.getEvents().length, 4);
 });
-t('D. 데이터', '1차 오픈 기간이 2026-11-03 ~ 11-22', () => {
+t('D. 데이터', '수록 기간이 2026-11-03 ~ 12-13 (2차 오픈분까지)', () => {
   const d = W.getSchedule().map(s => s.date).sort();
   eq(d[0], '2026-11-03');
-  eq(d[d.length - 1], '2026-11-22');
+  eq(d[d.length - 1], '2026-12-13');
 });
-t('D. 데이터', '달력 기준월이 2026년 11월', () => {
+t('D. 데이터', '달력 기준월 — 개막 전엔 2026년 11월, 이후엔 이번 달', () => {
   W.initCal();
-  eq([g('calYear'), g('calMonth')], [2026, 10], '0-indexed 로 10 = 11월');
+  const today = W.localDate();
+  const exp = today < '2026-11-03' ? [2026, 10] : [+today.slice(0, 4), +today.slice(5, 7) - 1];
+  eq([g('calYear'), g('calMonth')], exp, '0-indexed 월');
 });
 
 // ── 실행 ──────────────────────────────────────────────

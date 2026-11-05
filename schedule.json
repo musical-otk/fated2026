@@ -86,7 +86,7 @@
   {
     "date": "2026-11-14",
     "time": "15:00",
-    "achilles": "신주협",
+    "achilles": "박규원",
     "patroclus": "조은성",
     "hector": "이동수"
   },
@@ -170,8 +170,197 @@
   {
     "date": "2026-11-22",
     "time": "18:00",
+    "achilles": "박준형",
+    "patroclus": "반정모",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-11-24",
+    "time": "20:00",
+    "achilles": "박준형",
+    "patroclus": "반정모",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-11-25",
+    "time": "16:00",
+    "achilles": "박규원",
+    "patroclus": "조은성",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-11-25",
+    "time": "20:00",
+    "achilles": "신주협",
+    "patroclus": "김재한",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-11-26",
+    "time": "20:00",
+    "achilles": "박규원",
+    "patroclus": "김재한",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-11-27",
+    "time": "20:00",
+    "achilles": "박준형",
+    "patroclus": "조은성",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-11-28",
+    "time": "15:00",
+    "achilles": "박규원",
+    "patroclus": "반정모",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-11-28",
+    "time": "19:00",
+    "achilles": "박준형",
+    "patroclus": "김재한",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-11-29",
+    "time": "14:00",
     "achilles": "신주협",
     "patroclus": "반정모",
     "hector": "신수빈"
+  },
+  {
+    "date": "2026-11-29",
+    "time": "18:00",
+    "achilles": "신주협",
+    "patroclus": "조은성",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-01",
+    "time": "20:00",
+    "achilles": "박준형",
+    "patroclus": "김재한",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-12-02",
+    "time": "16:00",
+    "achilles": "신주협",
+    "patroclus": "반정모",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-02",
+    "time": "20:00",
+    "achilles": "신주협",
+    "patroclus": "조은성",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-12-03",
+    "time": "20:00",
+    "achilles": "박규원",
+    "patroclus": "김재한",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-04",
+    "time": "20:00",
+    "achilles": "박준형",
+    "patroclus": "반정모",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-12-05",
+    "time": "15:00",
+    "achilles": "신주협",
+    "patroclus": "김재한",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-12-05",
+    "time": "19:00",
+    "achilles": "박규원",
+    "patroclus": "반정모",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-12-06",
+    "time": "14:00",
+    "achilles": "박준형",
+    "patroclus": "조은성",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-06",
+    "time": "18:00",
+    "achilles": "박규원",
+    "patroclus": "반정모",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-12-08",
+    "time": "20:00",
+    "achilles": "박준형",
+    "patroclus": "조은성",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-12-09",
+    "time": "16:00",
+    "achilles": "신주협",
+    "patroclus": "반정모",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-09",
+    "time": "20:00",
+    "achilles": "박규원",
+    "patroclus": "김재한",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-12-10",
+    "time": "20:00",
+    "achilles": "박준형",
+    "patroclus": "반정모",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-11",
+    "time": "20:00",
+    "achilles": "박규원",
+    "patroclus": "조은성",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-12-12",
+    "time": "15:00",
+    "achilles": "박준형",
+    "patroclus": "김재한",
+    "hector": "이동수"
+  },
+  {
+    "date": "2026-12-12",
+    "time": "19:00",
+    "achilles": "박규원",
+    "patroclus": "반정모",
+    "hector": "조민호"
+  },
+  {
+    "date": "2026-12-13",
+    "time": "14:00",
+    "achilles": "신주협",
+    "patroclus": "김재한",
+    "hector": "신수빈"
+  },
+  {
+    "date": "2026-12-13",
+    "time": "18:00",
+    "achilles": "신주협",
+    "patroclus": "조은성",
+    "hector": "이동수"
   }
 ]
