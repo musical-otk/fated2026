@@ -643,6 +643,8 @@
         <option value="학생 할인">학생 할인 (20%)</option>
         <option value="장애인 할인">장애인 할인 (50%)</option>
         <option value="국가유공자 할인">국가유공자 할인 (50%)</option>
+        <option value="전장의 귀환권">전장의 귀환권 (현장 50%)</option>
+        <option value="신탁의 부름권">신탁의 부름권 (온라인 40%)</option>
         <option value="타임세일">타임세일</option>
       </select>
       <div id="rec-discount-warn" style="display:none;margin-top:6px;font-size:12px;color:var(--danger);">⚠ 현재 보유한 쿠폰이 없습니다</div>
@@ -1297,9 +1299,17 @@ function rowMaxNum(floor, rowKey) {
 // ============================================================
 // DISCOUNT / COUPON CONFIG
 // ============================================================
-// FATED 에는 실물 할인권이 없다 (MANIA CARD 보상이 전부 굿즈).
-// 비워두면 할인권 차감·잔여 계산이 전부 자동으로 꺼진다. DESIGN.md §4.3 참조.
-const DISCOUNT_COUPON_MAP = {};
+// MANIA CARD 보상은 전부 굿즈라 할인권이 생기는 길은 쿠폰팩(11/17~22) 하나뿐이다.
+// 쿠폰팩 4종 중 할인권 2종만 잔여를 센다 — 운명 변경권·전우 징표권은 관리하지 않는다 (사용자 결정 2026-11-05)
+const DISCOUNT_COUPON_MAP = {
+  '전장의 귀환권': 'discount50',   // 현장구매 50%
+  '신탁의 부름권': 'discount40',   // 온라인 예매 40%
+};
+// 쿠폰 권종이 11/18 에 생겨 그날 관람부터 쓸 수 있다 (제작사 답변). 끝나는 날은 실물 쿠폰 확인 전
+const DISCOUNT_VALID_FROM = {
+  '전장의 귀환권': '2026-11-18',
+  '신탁의 부름권': '2026-11-18',
+};
 const DISCOUNT_LABEL = {
   '정가':              '정가',
   '프리뷰 할인':       '프리뷰 할인 (50%)',
@@ -1309,17 +1319,36 @@ const DISCOUNT_LABEL = {
   '학생 할인':         '학생 할인 (20%)',
   '장애인 할인':       '장애인 할인 (50%)',
   '국가유공자 할인':   '국가유공자 할인 (50%)',
+  '전장의 귀환권':     '전장의 귀환권 (현장 50%)',
+  '신탁의 부름권':     '신탁의 부름권 (온라인 40%)',
   '타임세일':          '타임세일'   // 율이 매번 달라 % 없음
 };
 // 할인율 — 절감액 계산용 (정가: 전석 R석 66,000원 단일 등급)
 const DISCOUNT_RATE = {
   '프리뷰 할인': 50, '조기예매 할인': 20, '마티네 할인': 30, '재관람 할인': 25,
-  '학생 할인': 20, '장애인 할인': 50, '국가유공자 할인': 50
+  '학생 할인': 20, '장애인 할인': 50, '국가유공자 할인': 50,
+  '전장의 귀환권': 50, '신탁의 부름권': 40
 };
-// FATED 는 쿠폰이 없다 — MANIA CARD 보상이 전부 실물 굿즈다.
-// 비워두면 쿠폰 카드와 홈 쿠폰 요약이 전부 자동으로 안 그려진다.
-// 2차 특전에서 쿠폰이 생기면 여기에 항목을 넣는 것만으로 되살아난다. DESIGN.md §4.3
-const COUPON_ITEMS = [];
+const COUPON_ITEMS = [
+  { key: 'discount50', label: '현장 50% 할인권',   short: '50%' },   // 전장의 귀환권
+  { key: 'discount40', label: '온라인 40% 할인권', short: '40%' },   // 신탁의 부름권
+];
+// 관람일이 쿠폰 사용 시작 전이면 그 할인은 고를 수 없다
+function isDiscountUsableOn(type, date) {
+  const from = DISCOUNT_VALID_FROM[type];
+  return !from || (!!date && date >= from);
+}
+function updateDiscountOptions() {
+  const sel  = document.getElementById('rec-discount-type');
+  const date = document.getElementById('rec-date').value;
+  if (!sel) return;
+  [...sel.options].forEach(o => {
+    if (!DISCOUNT_VALID_FROM[o.value]) return;
+    const ok = isDiscountUsableOn(o.value, date);
+    o.disabled = !ok; o.hidden = !ok;   // iOS 는 hidden 을 무시해 disabled 도 함께
+  });
+  if (sel.selectedOptions[0]?.disabled) { sel.value = ''; onDiscountTypeChange(); }
+}
 
 // ============================================================
 // COUPON COUNT (실시간 계산)
@@ -1619,6 +1648,7 @@ function openAddStampBoardFromRecord() {
 // AUTO-FILL CASTING FROM SCHEDULE
 // ============================================================
 function autoFillCasting() {
+  updateDiscountOptions();
   const date = document.getElementById('rec-date').value;
   const timeEl = document.getElementById('rec-time');
   if (!date) return;
@@ -1758,7 +1788,10 @@ function saveRecord() {
   const prevDiscount = prevRecord?.discountType || null;
   const couponChanged = discountType !== prevDiscount;
 
-  // 쿠폰 잔여 체크 (차액지불 시 스킵. FATED 는 DISCOUNT_COUPON_MAP 이 비어 항상 지나간다)
+  if (discountType && !isDiscountUsableOn(discountType, document.getElementById('rec-date').value)) {
+    showToast(`${discountType}은 ${DISCOUNT_VALID_FROM[discountType].slice(5).replace('-', '/')} 관람부터 쓸 수 있습니다`); return;
+  }
+  // 쿠폰 잔여 체크 (차액지불 시 스킵)
   if (newCouponKey && couponChanged && !paidDiff) {
     const avail = calcCouponCount(newCouponKey, getCoupons(), getStampBoards(), records);
     if (avail <= 0 && !(editId && (DISCOUNT_COUPON_MAP[prevDiscount] || null) === newCouponKey)) {
@@ -1923,7 +1956,7 @@ function saveRecord() {
   commitPhotos(record.id);
   closePanel('overlay-record');
   refreshCurrentPage();
-  if (!editId) autoAddCouponPack(date);
+  if (!editId) autoAddCouponPack(record);
 }
 
 // 캐스팅 요약 문자열 (아킬레우스·파트로클로스 위주)
@@ -2112,6 +2145,7 @@ function deleteCurrentRecord() {
   const records = getRecords();
   const target  = records.find(x => x.id === currentDetailId);
   removeStampsForRecord(target);
+  removeCouponPackForRecord(currentDetailId);
   saveRecords(records.filter(x => x.id !== currentDetailId));
   dbDeleteRecordPhotos(currentDetailId);
   closePanel('overlay-detail');
@@ -3005,8 +3039,15 @@ function renderCouponList() {
 
   const dsRow = '';   // 추가적립권이 없는 작품
 
+  const unclaimed = unclaimedPackRecords();
+  const packRow = unclaimed.length
+    ? `<div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;border:1px dashed var(--border);border-radius:10px;font-size:12px;color:var(--text2);">
+         <span style="flex:1;">쿠폰팩 기간 관람 ${unclaimed.length}건 — 받은 쿠폰팩을 아직 넣지 않았습니다</span>
+         <button class="btn btn-outline" style="padding:6px 10px;font-size:12px;" onclick="claimCouponPacks()">받은 쿠폰팩 넣기</button>
+       </div>` : '';
   document.getElementById('coupon-list').innerHTML = COUPON_ITEMS.length
-    ? `<div class="coupon-cards">${mainItems.map(couponCardHtml).join('')}</div>${dsRow}`
+    ? `<div class="coupon-cards">${mainItems.map(couponCardHtml).join('')}</div>${dsRow}${packRow}
+       <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7;">쿠폰팩(11/17~22 관람)으로 받는 할인권입니다. 11/18 관람부터 쓸 수 있습니다.</div>`
     : `<div style="font-size:12px;color:var(--text3);padding:6px 4px 10px;line-height:1.8;">
          <b>MANIA CARD</b> 로 받는 혜택(포토카드·폴라로이드·실황 OST)은 모두 실물 굿즈라
          쿠폰으로 관리할 것이 없습니다.<br>
@@ -3019,22 +3060,71 @@ function renderCouponList() {
 // ============================================================
 // COUPON PACK
 // ============================================================
-// 특전(쿠폰팩)은 아직 공개되지 않았다. 안내가 나오면 여기에 채운다.
-// 빈 객체면 autoAddCouponPack 이 조용히 지나가고 쿠폰팩 confirm 도 뜨지 않는다.
-const COUPON_PACKS = {};
-
-function autoAddCouponPack(date) {
-  const pack = Object.values(COUPON_PACKS).find(p => date >= p.startDate && date <= p.endDate);
-  if (!pack) return;
-  if (!confirm(`📅 ${date} 관람은 "${pack.label}" 기간입니다.\n쿠폰팩을 자동으로 추가할까요?\n(${pack.items.map(i => `${COUPON_ITEMS.find(c=>c.key===i.key)?.label} ×${i.qty}`).join(', ')})`)) return;
+// 쿠폰팩 증정 위크 — 유료 티켓 1매당 1세트. 4종 중 잔여를 세는 건 할인권 2종뿐이다
+// 받은 쿠폰팩은 관람 기록에 묶어 둔다 (packRecordId) — 기록을 지우면 같이 빠지고, 두 번 들어가지 않는다
+const COUPON_PACKS = {
+  oracle: { label: '쿠폰팩', startDate: '2026-11-17', endDate: '2026-11-22',
+            items: [{ key: 'discount50', qty: 1 }, { key: 'discount40', qty: 1 }] },
+};
+function packForDate(date) {
+  return Object.values(COUPON_PACKS).find(p => date >= p.startDate && date <= p.endDate) || null;
+}
+function packClaimedIds() {
+  const ids = new Set();
+  Object.values(getCoupons()).forEach(c => (c.history || []).forEach(h => { if (h.packRecordId) ids.add(h.packRecordId); }));
+  return ids;
+}
+// 쿠폰팩 기간 관람인데 쿠폰팩을 아직 안 넣은 기록 (양도·안 받았다고 답한 기록 제외)
+function unclaimedPackRecords() {
+  const claimed  = packClaimedIds();
+  const declined = new Set(DB.get('packDeclined', []));
+  return watchedOnly(getRecords()).filter(r => packForDate(r.date) && !claimed.has(r.id) && !declined.has(r.id));
+}
+function addCouponPackFor(records) {
   const coupons = getCoupons();
-  pack.items.forEach(({ key, qty }) => {
-    if (!coupons[key]) coupons[key] = { count: 0, history: [] };
-    coupons[key].history.push({ type: '획득', date, comment: pack.label, qty });
+  records.forEach(r => {
+    packForDate(r.date).items.forEach(({ key, qty }) => {
+      if (!coupons[key]) coupons[key] = { count: 0, history: [] };
+      coupons[key].history.push({ type: '획득', date: r.date, comment: '쿠폰팩', qty, packRecordId: r.id });
+    });
   });
   saveCoupons(coupons);
+}
+function packItemsText(pack) {
+  return pack.items.map(i => `${COUPON_ITEMS.find(c => c.key === i.key)?.label} ×${i.qty}`).join(', ');
+}
+function autoAddCouponPack(record) {
+  const pack = packForDate(record.date);
+  if (!pack || isTransferred(record) || packClaimedIds().has(record.id)) return;
+  if (!confirm(`📅 ${record.date} 관람은 쿠폰팩 증정 기간입니다.\n받은 쿠폰팩을 추가할까요?\n(${packItemsText(pack)})`)) {
+    DB.set('packDeclined', [...new Set([...DB.get('packDeclined', []), record.id])]);
+    renderCouponList();
+    return;
+  }
+  addCouponPackFor([record]);
   renderCouponList(); renderHome();
-  showToast(`${pack.label} 추가 완료`);
+  showToast('쿠폰팩 추가 완료');
+}
+// 쿠폰 탭 안내에서 한 번에 넣기 — 미리 기록해 둔 11/17~22 관람용
+function claimCouponPacks() {
+  const list = unclaimedPackRecords();
+  if (!list.length) return;
+  if (!confirm(`쿠폰팩 기간 관람 ${list.length}건의 쿠폰팩을 넣을까요?\n(1건당 ${packItemsText(packForDate(list[0].date))})`)) return;
+  addCouponPackFor(list);
+  renderCouponList(); renderHome();
+  showToast(`쿠폰팩 ${list.length}건 추가 완료`);
+}
+function removeCouponPackForRecord(recordId) {
+  const coupons = getCoupons();
+  let changed = false;
+  Object.values(coupons).forEach(c => {
+    const before = (c.history || []).length;
+    c.history = (c.history || []).filter(h => h.packRecordId !== recordId);
+    if (c.history.length !== before) changed = true;
+  });
+  if (changed) saveCoupons(coupons);
+  const declined = DB.get('packDeclined', []);
+  if (declined.includes(recordId)) DB.set('packDeclined', declined.filter(id => id !== recordId));
 }
 
 // ============================================================
