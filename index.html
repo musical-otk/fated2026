@@ -254,6 +254,11 @@
   .upcoming-dday{font-size:12px;font-weight:700;color:var(--accent);min-width:36px;white-space:nowrap;}
   .upcoming-date{font-size:12px;color:var(--text2);white-space:nowrap;}
   .upcoming-seat{font-size:11px;color:var(--text3);opacity:0.75;white-space:nowrap;}
+  /* 한 장 보고 한 장 양도한 회차 — 좌석·날짜 옆 배지 (캐스팅 옆에 두면 회차를 넘긴 것처럼 읽힌다) */
+  .split-badge{display:inline-block;font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:999px;color:var(--text3);white-space:nowrap;flex-shrink:0;vertical-align:middle;}
+  .next-show-seat .split-badge{font-size:11px;border-color:rgba(255,255,255,0.5);color:#fff;margin-left:8px;}
+  .next-show-seat .split-badge:first-child{margin-left:0;}
+  .upcoming-item{flex-wrap:wrap;row-gap:4px;}   /* 좁으면 캐스팅이 다음 줄로 */
   .upcoming-cast{font-size:11px;color:var(--text3);white-space:nowrap;margin-left:auto;}
   .home-stamp-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);}
   .home-stamp-row:last-child{border-bottom:none;}
@@ -2375,8 +2380,17 @@ function renderHome() {
 
   // 양도한 표는 내가 보러 가는 공연이 아니다. D-day 카드에서는 건너뛴다.
   // 목록에는 남긴다 — 누구에게 넘겼는지가 기억해야 할 내용이다.
+  // 한 장 보고 한 장 양도한 회차는 한 번만 — 양도는 관람 기록 옆 꼬리표로 붙인다
+  const sameSess = (a, b) => a.date === b.date && a.time === b.time;
+  const splitBadge = r => {
+    if (isTransferred(r)) return '';
+    const ts = upcoming.filter(t => isTransferred(t) && sameSess(t, r));
+    const to = ts.map(t => t.transferTo).filter(Boolean).join(', ');
+    return ts.length ? `<span class="split-badge">+${ts.length}장 양도${to ? ' · ' + to : ''}</span>` : '';
+  };
   const nextShow = upcoming.find(isWatched);
-  const rest     = upcoming.filter(r => r !== nextShow);
+  const rest     = upcoming.filter(r => r !== nextShow
+    && !(isTransferred(r) && upcoming.some(w => isWatched(w) && sameSess(w, r))));
 
   // ① D-day 카드
   const nextEl = document.getElementById('home-next-show');
@@ -2391,7 +2405,7 @@ function renderHome() {
         <div class="next-show-dday${diff===0?' today-dday':''}">${dday}${nextShow.isBooked===false?` <span style="font-size:14px;opacity:0.7;font-weight:400;">미정</span>`:''}</div>
         <div class="next-show-date">${nextShow.date} (${dow[d.getDay()]}) ${nextShow.time}</div>
         <div class="next-show-casting">${castPills}</div>
-        ${seat ? `<div class="next-show-seat">${seat}</div>` : ''}
+        ${(seat || splitBadge(nextShow)) ? `<div class="next-show-seat">${seat ? `<span>${seat}</span>` : ''}${splitBadge(nextShow)}</div>` : ''}
       </div>`;
   } else {
     nextEl.innerHTML = `<div class="card" style="text-align:center;color:var(--text3);padding:20px;"><div style="font-size:28px;margin-bottom:6px;">🗡️</div><div style="font-size:13px;">예매 확정된 일정이 없습니다</div></div>`;
@@ -2418,6 +2432,7 @@ function renderHome() {
         <div class="upcoming-dday" style="${(tr || r.isBooked===false)?'color:var(--text3);':''}">${dday2}</div>
         <div class="upcoming-date">${r.date.slice(5)} (${dow[d2.getDay()]}) ${r.time}</div>
         ${seat2 ? `<div class="upcoming-seat">${seat2}</div>` : ''}
+        ${splitBadge(r)}
         ${tr ? '' : upMsBadge}
         <div class="upcoming-cast">${castStr}${trTail}</div>
       </div>`;
@@ -2494,6 +2509,9 @@ function renderHome() {
 // ============================================================
 let calYear, calMonth, calSelectedDs = null;
 let calFilter = { achilles:null, patroclus:null, hector:null };
+// 배역마다 여러 명을 고를 수 있다 — 같은 배역은 그중 한 명이라도(OR), 다른 배역끼리는 모두 맞아야(AND).
+// 예전에 저장된 값은 배우 이름 하나라 배열로 읽는다.
+const cfList = v => Array.isArray(v) ? v : (v ? [v] : []);
 const calExpandedRoles = new Set(); // 펼쳐진 배역 탭들 (복수 동시 가능)
 
 function initCal() {
@@ -2544,11 +2562,11 @@ function renderAllActorChips() {
   container.innerHTML = ROLES
     .filter(r => calExpandedRoles.has(r.key))
     .map(roleData => {
-      const cur = calFilter[roleData.key];
+      const cur = cfList(calFilter[roleData.key]);
       const chips =
-        `<button class="cal-chip${!cur?' active':''}" onclick="setCalFilterFromTab('${roleData.key}',null)">전체</button>` +
+        `<button class="cal-chip${!cur.length?' active':''}" onclick="setCalFilterFromTab('${roleData.key}',null)">전체</button>` +
         roleData.actors.map(a =>
-          `<button class="cal-chip${cur===a?' active':''}" onclick="setCalFilterFromTab('${roleData.key}','${a}')">${a}</button>`
+          `<button class="cal-chip${cur.includes(a)?' active':''}" onclick="setCalFilterFromTab('${roleData.key}','${a}')">${a}</button>`
         ).join('');
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border);">
         <span style="font-size:11px;color:var(--accent);font-weight:700;width:${roleLabelWidth()};flex-shrink:0;">${roleData.label}</span>
@@ -2559,7 +2577,9 @@ function renderAllActorChips() {
 
 // 배우 선택
 function setCalFilterFromTab(role, actor) {
-  calFilter[role] = actor;
+  const cur = cfList(calFilter[role]);
+  const next = actor === null ? [] : cur.includes(actor) ? cur.filter(x => x !== actor) : [...cur, actor];
+  calFilter[role] = next.length ? next : null;
   renderAllActorChips();
   updateRoleTabIndicators();
   updateCalFilterHint();
@@ -2582,7 +2602,7 @@ function updateCalFilterHint() {
   if (!el) return;
   const active = Object.entries(calFilter).filter(([,v]) => v).map(([k,v]) => {
     const role = ROLES.find(r => r.key === k);
-    return `${role?.label||k} ${v}`;
+    return `${role?.label||k} ${cfList(v).join('·')}`;
   });
   el.textContent = active.length ? '· ' + active.join(' · ') + ' 필터 중' : '· 전체 회차 표시 중';
 }
@@ -2649,7 +2669,7 @@ function renderCalendar() {
       const dow2    = new Date(calYear, calMonth, day).getDay();
       const daySch  = schByDate[ds] || [];
       const filtered = daySch.filter(s =>
-        Object.entries(calFilter).every(([k,v]) => !v || s[k] === v)
+        Object.entries(calFilter).every(([k,v]) => !v || cfList(v).includes(s[k]))
       );
       let cls = 'cal-day';
       if (ds === todayStr)      cls += ' today';
@@ -2658,7 +2678,7 @@ function renderCalendar() {
       if (ds === calSelectedDs) cls += ' selected';
       const sessionHtml = filtered.sort((a,b)=>a.time.localeCompare(b.time)).map(s => {
         const key = `${ds}-${s.time}`;
-        const isBooked = bookedSet.has(key), isDone = doneSet.has(key), isTrans = transSet.has(key);
+        const isBooked = bookedSet.has(key), isDone = doneSet.has(key), isTrans = transSet.has(key) && !doneSet.has(key);  // 한 장 양도·한 장 관람이면 관람으로
         const chipCls  = isTrans  ? 'cal-session-chip transferred'
                        : isBooked ? 'cal-session-chip booked'
                        : isDone   ? 'cal-session-chip done' : 'cal-session-chip';
@@ -2722,10 +2742,9 @@ function renderCalDayPanel(ds, daySch, doneSet, bookedSet, records) {
       const isBooked = bookedSet.has(key);
       const recs = dayRecords.filter(r => r.time === s.time);
       const trans = recs.find(isTransferred);
-      const badge = trans
-        ? `<span class="cal-session-badge transferred">↪ 양도${trans.transferTo ? ' · ' + trans.transferTo : ''}</span>`
-        : isBooked ? '<span class="cal-session-badge booked">✓ 확정</span>'
-        : isDone ? '<span class="cal-session-badge done">✅</span>' : '';
+      const transBadge = trans ? `<span class="cal-session-badge transferred">↪ 양도${trans.transferTo ? ' · ' + trans.transferTo : ''}</span>` : '';
+      const badge = (isBooked ? '<span class="cal-session-badge booked">✓ 확정</span>'
+        : isDone ? '<span class="cal-session-badge done">✅</span>' : '') + transBadge;
       const castStr = ROLES.map(r => s[r.key]).filter(Boolean).join(' · ');
       const btn = recs.length === 0
         ? `<button class="cal-session-add" onclick="openAddRecordFromSchedule('${ds}','${s.time}','${JSON.stringify(s).replace(/"/g,'&quot;')}')">+ 기록</button>`

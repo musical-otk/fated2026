@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fated2026-v5';
+const CACHE_NAME = 'fated2026-v7';
 const BASE = '/fated2026';
 
 const PRECACHE_URLS = [
