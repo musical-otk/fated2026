@@ -255,6 +255,9 @@
   .upcoming-date{font-size:12px;color:var(--text2);white-space:nowrap;}
   .upcoming-seat{font-size:11px;color:var(--text3);opacity:0.75;white-space:nowrap;}
   /* 한 장 보고 한 장 양도한 회차 — 좌석·날짜 옆 배지 (캐스팅 옆에 두면 회차를 넘긴 것처럼 읽힌다) */
+  .detail-pager{display:flex;justify-content:center;gap:8px;margin:-6px 0 14px;}
+  .detail-pager i{width:8px;height:8px;border-radius:50%;background:var(--border);cursor:pointer;transition:background .15s;}
+  .detail-pager i.on{background:var(--accent);}
   .split-badge{display:inline-block;font-size:10px;padding:1px 6px;border:1px solid var(--border);border-radius:999px;color:var(--text3);white-space:nowrap;flex-shrink:0;vertical-align:middle;}
   .next-show-seat .split-badge{font-size:11px;border-color:rgba(255,255,255,0.5);color:#fff;margin-left:8px;}
   .next-show-seat .split-badge:first-child{margin-left:0;}
@@ -1973,7 +1976,30 @@ function buildCastSummary(r) {
 // RECORD DETAIL
 // ============================================================
 let currentDetailId = null;
-function openDetail(id) {
+function stepDetail(dir) {
+  const r = getRecords().find(x => x.id === currentDetailId); if (!r) return;
+  const sibs = sameSessionRecords(r), next = sibs[sibs.findIndex(x => x.id === r.id) + dir];
+  if (next) openDetail(next.id, dir);
+}
+// 상세 내용을 좌우로 밀면 같은 회차의 다른 기록으로 (세로 스크롤과 헷갈리지 않게 가로로 충분히 밀었을 때만)
+(function detailSwipe() {
+  let x0 = null, y0 = 0;
+  document.addEventListener('touchstart', e => {
+    if (!e.target.closest || !e.target.closest('#detail-content')) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) stepDetail(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
+// 같은 회차의 기록들 — 보는 표 먼저, 양도한 표는 뒤. 상세에서 좌우로 넘긴다
+function sameSessionRecords(r) {
+  return getRecords().filter(x => x.date === r.date && x.time === r.time)
+    .sort((a, b) => isTransferred(a) - isTransferred(b) || String(a.id).localeCompare(String(b.id)));
+}
+function openDetail(id, slideFrom) {
   currentDetailId = id;
   const r = getRecords().find(x => x.id === id);
   if (!r) return;
@@ -2038,7 +2064,16 @@ function openDetail(id) {
   if (r.memo) html += `<div class="detail-field"><div class="detail-field-label">감상 메모</div><div class="detail-field-value" style="font-size:14px;line-height:1.6;white-space:pre-wrap;">${r.memo}</div></div>`;
   // 사진 자리 placeholder
   html += `<div id="detail-photo-area"></div>`;
-  document.getElementById('detail-content').innerHTML = html;
+  const sibs = sameSessionRecords(r), at = sibs.findIndex(x => x.id === r.id);
+  // 표 수만큼 점, 지금 보는 표만 색 — 좌우로 밀거나 점을 눌러 넘긴다
+  if (sibs.length > 1) html = `<div class="detail-pager">${sibs.map((x, i) =>
+      `<i class="${i === at ? 'on' : ''}" onclick="stepDetail(${i - at})" aria-label="${i + 1}번째 표"></i>`).join('')}</div>` + html;
+  const dc = document.getElementById('detail-content');
+  dc.innerHTML = html;
+  if (slideFrom) {   // 넘긴 쪽에서 미끄러져 들어온다
+    dc.style.transition = 'none'; dc.style.transform = `translateX(${slideFrom * 40}px)`; dc.style.opacity = '0';
+    requestAnimationFrame(() => { dc.style.transition = 'transform .18s ease, opacity .18s ease'; dc.style.transform = ''; dc.style.opacity = ''; });
+  }
   openPanel('overlay-detail');
   // 사진 비동기 로드
   dbGetPhotos(id).then(photos => {
@@ -2386,7 +2421,7 @@ function renderHome() {
     if (isTransferred(r)) return '';
     const ts = upcoming.filter(t => isTransferred(t) && sameSess(t, r));
     const to = ts.map(t => t.transferTo).filter(Boolean).join(', ');
-    return ts.length ? `<span class="split-badge">+${ts.length}장 양도${to ? ' · ' + to : ''}</span>` : '';
+    return ts.length ? `<span class="split-badge" title="양도${to ? ' · ' + to : ''}">+${ts.length}</span>` : '';
   };
   const nextShow = upcoming.find(isWatched);
   const rest     = upcoming.filter(r => r !== nextShow
