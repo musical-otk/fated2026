@@ -538,6 +538,87 @@ t('D. 데이터', '달력 기준월 — 개막 전엔 2026년 11월, 이후엔 �
   eq([g('calYear'), g('calMonth')], exp, '0-indexed 월');
 });
 
+// ── B. 6개 앱 리뷰 회귀 (도장 손실·숨은 체크·가득 찬 판) ─────────────
+function firstSession() { const s = W.getSchedule()[0]; return { date: s.date, time: s.time }; }
+
+t('B. 회귀', 'B1 — 양도로 바꿔도 같은 날 다른 기록의 도장은 남음', () => {
+  reset();
+  const id = newBoard(1);
+  const { date, time } = firstSession();
+  addRecordViaForm({ date, time, boardId: id });
+  const recs = addRecordViaForm({ date, time, boardId: id });
+  eq(recs.length, 2, '같은 회차 두 장');
+  const r0 = recs[0], r1 = recs[1];
+  ok(boards().find(b => b.id === id).history.every(h => h.recordId), '두 도장 모두 기록과 연결');
+  W.editRecord(r0.id);
+  W.document.getElementById('rec-transferred').checked = true;
+  W.onRecTransferredChange();
+  W.saveRecord();
+  const hist = boards().find(b => b.id === id).history;
+  ok(!hist.some(h => h.recordId === r0.id), '양도한 기록의 도장은 회수');
+  ok(hist.some(h => h.recordId === r1.id), '다른 기록의 도장은 남아야 함');
+});
+
+t('B. 회귀', 'B2 — 도장이 오버플로우 판에만 있는 기록을 지워도 같은 날 다른 기록 도장은 남음', () => {
+  reset();
+  const a = newBoard(1), b = newBoard(2);
+  const { date, time } = firstSession();
+  const bs = boards();
+  bs.find(x => x.id === a).history = [{ date, method: '테스트 관람 연동', comment: '', qty: 1, recordId: 'R2' }];
+  bs.find(x => x.id === b).history = [{ date, method: '테스트 관람 연동', comment: '', qty: 1, recordId: 'R1' }];
+  bs.forEach(x => W.recalcStampCount(x));
+  W.saveStampBoards(bs);
+  const base = { date, time, isBooked: true, status: '관람' };
+  W.saveRecords([{ id: 'R1', ...base, stampBoardId: a, stampQty: 1 }, { id: 'R2', ...base, stampBoardId: a, stampQty: 1 }]);
+  deleteRecordById('R1');
+  const ha = boards().find(x => x.id === a).history;
+  ok(ha.some(h => h.recordId === 'R2'), 'R2 의 도장이 지워지면 안 됨');
+  eq(boards().find(x => x.id === b).history.length, 0, 'R1 의 도장은 회수');
+});
+
+t('B. 회귀', 'B3 — 증빙·차액 체크가 숨겨진 채 남아 저장되지 않음', () => {
+  reset();
+  const { date, time } = firstSession();
+  const d = W.document;
+  const proof = W.eval("(typeof PROOF_PASS_DISCOUNTS !== 'undefined' ? PROOF_PASS_DISCOUNTS : typeof DISCOUNT_NEEDS_PROOF !== 'undefined' ? [...DISCOUNT_NEEDS_PROOF] : Object.keys(DISCOUNT_COUPON_MAP))[0]");
+  W.openAddRecord(date);
+  d.getElementById('rec-time').value = time;
+  d.getElementById('rec-discount-type').value = proof;
+  ok(d.getElementById('rec-discount-type').value === proof, '증빙 필요 할인이 목록에 있어야 함: ' + proof);
+  W.onDiscountTypeChange();
+  d.getElementById('rec-paid-diff').checked = true;
+  const eb = d.getElementById('rec-eungbing-used');
+  if (eb) eb.checked = true;
+  d.getElementById('rec-discount-type').value = '정가';
+  W.onDiscountTypeChange();
+  W.saveRecord();
+  const r = W.getRecords()[0];
+  ok(r, '저장돼야 함');
+  eq(r.paidDiff, false, '정가로 바꾸면 차액 지불은 꺼져야 함');
+  ok(!r.eungBingPassUsed, '정가로 바꾸면 증빙패스 사용은 꺼져야 함');
+});
+
+t('B. 회귀', 'B9 — 그 사이 가득 찬 판에 저장해도 다른 기록의 도장 id 를 덮어쓰지 않음', () => {
+  reset();
+  const id = newBoard(1);
+  fill(id, 7);
+  const { date, time } = firstSession();
+  const d = W.document;
+  W.openAddRecord(date);
+  d.getElementById('rec-time').value = time;
+  const q1 = d.querySelector('input[name="rec-stamp-qty"][value="1"]');
+  if (q1) q1.checked = true;
+  const sel = d.getElementById('rec-stamp-board');
+  sel.value = id; W.onRecStampBoardChange();
+  fill(id, 1);                       // 폼을 연 사이 판이 가득 참
+  W.saveRecord();
+  const rec = W.getRecords()[0];
+  ok(rec, '기록은 저장돼야 함');
+  const hist = boards().find(b => b.id === id).history;
+  ok(hist.every(h => !h.recordId), '기존 이력에 recordId 가 붙으면 안 됨');
+  eq(rec.stampBoardId, null, '도장이 안 들어갔으니 연동은 풀려야 함');
+});
+
 // ── 실행 ──────────────────────────────────────────────
 function run() {
   let pass = 0, fail = 0;

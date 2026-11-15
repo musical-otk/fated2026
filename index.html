@@ -1101,10 +1101,14 @@ window.addEventListener('popstate', () => {
 });
 
 // 내보내기 (텍스트만 / 사진 포함)
+const EXPORT_PREF_KEYS = ['packDeclined', 'homeUpcomingRoles', 'homeRecentCount', 'homeStampsCollapsed'];   // 기록과 함께 챙길 설정성 키
 async function doExport(includePhotos) {
+  const prefs = {};
+  EXPORT_PREF_KEYS.forEach(k => { const v = DB.get(k, null); if (v !== null) prefs[k] = v; });
   const data = {
+    app: APP_PREFIX, version: 2, exportedAt: new Date().toISOString(),
     records: getRecords(), schedule: getSchedule(), events: getEvents(),
-    stampBoards: getStampBoards(), coupons: getCoupons(), settings: getSettings()
+    stampBoards: getStampBoards(), coupons: getCoupons(), settings: getSettings(), prefs
   };
   if (includePhotos) data.photos = await dbGetAllPhotos();
   const a  = document.createElement('a');
@@ -1129,8 +1133,8 @@ const DB = {
 // 만들 때 복사해 둔 옛 캐스팅을 그대로 들고 있었다.
 // 캘린더는 스케줄을 직접 읽어 바뀌는데, D-day 카드·예정 목록·상세는
 // 기록을 읽으므로 안 바뀐다.
-// 아직 안 본 회차(오늘 이후)는 스케줄이 정답이므로 맞춘다.
-// 지난 회차는 실제로 본 캐스팅이라 건드리지 않는다.
+// 캐스팅은 관찰값이 아니라 스케줄의 복사본이므로 지난 회차도 스케줄에 맞춘다.
+// 단, 폼에서 스케줄과 다르게 직접 적은 기록(castManual)은 건드리지 않는다.
 function syncCastingFromSchedule() {
   const schedule = getSchedule();
   if (!schedule.length) return 0;
@@ -1169,6 +1173,7 @@ function localDate() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));   // 사용자 입력을 innerHTML 에 넣을 때
 function uuid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
 // ============================================================
@@ -1481,10 +1486,10 @@ function switchTab(name, btn) {
   if (name === 'stats')    renderStats();
   if (name === 'coupon')   renderCoupon();
   if (name === 'settings') { renderHomeRoleSetting();
-    const sa = localStorage.getItem('scheduleUpdatedAt');
+    const sa = DB.get('scheduleUpdatedAt', null);
     const te = document.getElementById('schedule-update-time');
     if (te) te.textContent = sa ? sa + ' (캐시)' : '없음';
-    const ea = localStorage.getItem('eventsUpdatedAt');
+    const ea = DB.get('eventsUpdatedAt', null);
     const ee = document.getElementById('event-update-time');
     if (ee) ee.textContent = ea ? ea + ' (캐시)' : '없음';
   }
@@ -1574,7 +1579,11 @@ function onDiscountTypeChange() {
   const warn = document.getElementById('rec-discount-warn');
   const paidGrp = document.getElementById('rec-paid-diff-group');
   const couponKey = DISCOUNT_COUPON_MAP[val];
-  if (paidGrp) paidGrp.style.display = couponKey ? '' : 'none';
+  // 차액 지불은 할인이 있으면 어느 것이든 — 증빙 없이 정가와의 차액을 낸 경우(원가 차액도 차액, 사용자 11/15).
+  // 할인 없음·정가로 바꾸면 숨겨진 체크를 풀어 둔다 (저장에 딸려 가지 않게)
+  const hasDiscount = !!val && val !== '정가';
+  if (!hasDiscount) { const pd = document.getElementById('rec-paid-diff'); if (pd) pd.checked = false; }
+  if (paidGrp) paidGrp.style.display = hasDiscount ? '' : 'none';
   const coupons = getCoupons();
   const boards  = getStampBoards();
   const records = getRecords();
@@ -1694,7 +1703,7 @@ function fillRolesFromSchedule(s) {
 function resetTimeOptions() {
   document.getElementById('rec-time').innerHTML =
     '<option value="">선택</option>' +
-    ['14:00','15:00','18:30','19:30'].map(t => `<option value="${t}">${t}</option>`).join('');
+    ['14:00','15:00','16:00','18:00','19:00','20:00'].map(t => `<option value="${t}">${t}</option>`).join('');
 }
 
 // ============================================================
@@ -1740,7 +1749,9 @@ function editRecord(id) {
   document.getElementById('edit-record-id').value = id;
   document.getElementById('rec-date').value = r.date;
   resetTimeOptions(); autoFillCasting();
-  document.getElementById('rec-time').value = r.time;
+  { const te = document.getElementById('rec-time'); te.value = r.time;
+    // 스케줄이 바뀌어 옵션에 없는 시간이면 옵션을 하나 더해 값을 지킨다
+    if (te.value !== r.time) { const o = document.createElement('option'); o.value = r.time; o.textContent = r.time; te.appendChild(o); te.value = r.time; } }
   ROLES.forEach(role => {
     const el = document.getElementById('rec-' + role.key);
     if (el) el.value = r[role.key] || '';
@@ -1785,11 +1796,17 @@ function saveRecord() {
   const patroclus   = document.getElementById('rec-patroclus').value;
   // 필수 배역 없음 — 날짜·시간만 필수 (배역은 모두 선택 입력)
   if (!date || !time) { showToast('날짜와 시간은 필수입니다'); return; }
+  // 열마다 좌석 수가 다르다 — 없는 번호를 적으면 좌석도에 안 나온다
+  {
+    const f = document.getElementById('rec-floor').value, z = document.getElementById('rec-zone').value;
+    const n = parseInt(document.getElementById('rec-num').value);
+    if (f && z && n && SEAT_PLAN[f]?.def?.[z] && (n < 1 || n > rowMaxNum(f, z))) { showToast(`${f} ${z}열은 1~${rowMaxNum(f, z)}번입니다`); return; }
+  }
 
   const records     = getRecords();
   const editId      = document.getElementById('edit-record-id').value;
   const discountType = document.getElementById('rec-discount-type').value || null;
-  const paidDiff         = !!(document.getElementById('rec-paid-diff').checked);
+  const paidDiff         = !!(document.getElementById('rec-paid-diff').checked);   // 숨겨진 체크는 할인 변경 때 onDiscountTypeChange 가 풀어 둔다
   const doubleStampUsed  = false;   // 추가적립권이 없는 작품
   const newCouponKey = DISCOUNT_COUPON_MAP[discountType] || null;
   const prevRecord  = editId ? records.find(x => x.id === editId) : null;
@@ -1799,10 +1816,14 @@ function saveRecord() {
   if (discountType && !isDiscountUsableOn(discountType, document.getElementById('rec-date').value)) {
     showToast(`${discountType}은 ${DISCOUNT_VALID_FROM[discountType].slice(5).replace('-', '/')} 관람부터 쓸 수 있습니다`); return;
   }
-  // 쿠폰 잔여 체크 (차액지불 시 스킵)
-  if (newCouponKey && couponChanged && !paidDiff) {
+  // 쿠폰 잔여 체크 (차액지불·양도 시 스킵 — 할인권을 내지 않으므로)
+  // 이 기록이 지금 쿠폰을 쓰고 있는 상태(prevCounted)가 아니었다면 — 할인을 바꿨든, 양도·차액지불을 풀었든 — 새로 쓰는 것이므로 검사한다
+  const transferringNow = !!document.getElementById('rec-transferred')?.checked;
+  const prevCounted = !!prevRecord && !isTransferred(prevRecord) && !prevRecord.paidDiff && !prevRecord.eungBingPassUsed &&
+                      (DISCOUNT_COUPON_MAP[prevDiscount] || null) === newCouponKey;
+  if (newCouponKey && !paidDiff && !transferringNow && (couponChanged || !prevCounted)) {
     const avail = calcCouponCount(newCouponKey, getCoupons(), getStampBoards(), records);
-    if (avail <= 0 && !(editId && (DISCOUNT_COUPON_MAP[prevDiscount] || null) === newCouponKey)) {
+    if (avail <= 0 && !prevCounted) {
       showToast('현재 보유한 쿠폰이 없습니다'); return;
     }
   }
@@ -1894,7 +1915,7 @@ function saveRecord() {
         const pb = boards.find(b => b.id === prevBoardId);
         if (pb?.history) {
           const idx = pb.history.map((h,i)=>({h,i})).reverse()
-            .find(({h}) => h.date === prevRecord.date && h.method?.includes('관람'));
+            .find(({h}) => !h.recordId && h.date === prevRecord.date && h.method?.includes('관람'));
           if (idx !== undefined) {
             pb.history.splice(idx.i, 1);
             recalcStampCount(pb);
@@ -1924,7 +1945,11 @@ function saveRecord() {
             const castStr = buildCastSummary(record);
             nb.history.push({ recordId: editId, date, method: `${castStr} 관람 연동${actualQty>1?' ×'+actualQty:''}`, comment: '', qty: actualQty });
             recalcStampCount(nb);
+            // 수량을 줄여 마일스톤 아래로 내려간 경우 달성 표시를 되돌린다 (제거 단계에서는 대상 보드를 건너뛰었다)
+            revalidateMilestones(nb);
             triggerMilestonesIfNeeded(nb, stampBoardId);
+          } else {
+            revalidateMilestones(nb);
           }
         }
       }
@@ -1943,10 +1968,13 @@ function saveRecord() {
       const toastMsg   = applyStampToBoard(stampBoardId, stampQty, date, `${castStr} 관람 연동`);
       const overflowQty = applyStampToBoard._lastOverflow || 0;
       applyStampToBoard._lastOverflow = 0;
+      // 도장이 실제로 안 들어갔으면(그 사이 가득 참) 다른 기록의 이력에 id 를 덮어쓰지 않고 연동을 푼다
+      const stampPushed = !!applyStampToBoard._pushed;
+      if (!stampPushed) { record.stampBoardId = null; record.stampQty = null; }
       // 메인 이력에 recordId 연결
       const boards2 = getStampBoards();
       const b2 = boards2.find(b => b.id === stampBoardId);
-      if (b2?.history?.length) {
+      if (stampPushed && b2?.history?.length) {
         b2.history[b2.history.length - 1].recordId = record.id;
         saveStampBoards(boards2);
       }
@@ -2006,7 +2034,7 @@ function openDetail(id, slideFrom) {
   const dow = ['일','월','화','수','목','금','토'];
   const d   = new Date(r.date + 'T00:00:00');
   const bookedBadge = isTransferred(r)
-    ? `<span style="font-size:11px;color:var(--text3);margin-left:6px;">↪ 양도${r.transferTo ? ' · ' + r.transferTo : ''}</span>`
+    ? `<span style="font-size:11px;color:var(--text3);margin-left:6px;">↪ 양도${r.transferTo ? ' · ' + esc(r.transferTo) : ''}</span>`
     : r.isBooked === false
     ? '<span style="font-size:11px;color:var(--text3);margin-left:6px;">미정</span>'
     : '<span style="font-size:11px;color:var(--success);margin-left:6px;">✅ 확정</span>';
@@ -2020,10 +2048,10 @@ function openDetail(id, slideFrom) {
   html += '</div>';
 
   if (r.rating) html += `<div class="detail-field"><div class="detail-field-label">별점</div><div style="color:var(--star);font-size:20px;">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div></div>`;
-  if (r.comment) html += `<div class="detail-field"><div class="detail-field-label">한줄 코멘트</div><div class="detail-field-value">${r.comment}</div></div>`;
+  if (r.comment) html += `<div class="detail-field"><div class="detail-field-label">한줄 코멘트</div><div class="detail-field-value">${esc(r.comment)}</div></div>`;
 
   if (r.seatZone) {
-    const seatLabel = (r.seatFloor ? r.seatFloor + ' ' : '') + r.seatZone + '열 ' + r.seatNumber + '번';
+    const seatLabel = (r.seatFloor ? r.seatFloor + ' ' : '') + r.seatZone + '열' + (r.seatNumber != null ? ' ' + r.seatNumber + '번' : '');
     html += `<div class="detail-field"><div class="detail-field-label">좌석</div><div class="detail-field-value">${seatLabel}</div></div>`;
     html += buildMiniSeat(r.seatFloor, r.seatZone, r.seatNumber);
   }
@@ -2055,13 +2083,13 @@ function openDetail(id, slideFrom) {
           }
           if (seq === null) return null;
           const range = qty > 1 ? `[${seq}~${seq+qty-1}]` : `[${seq}]`;
-          return `[🎫 ${board.name}] ${range}`;
+          return `[🎫 ${esc(board.name)}] ${range}`;
         }).filter(Boolean).join('  ');
       if (parts) html += `<div class="detail-field"><div class="detail-field-label">재관람 카드</div><div class="detail-field-value">${parts}</div></div>`;
     }
   }
 
-  if (r.memo) html += `<div class="detail-field"><div class="detail-field-label">감상 메모</div><div class="detail-field-value" style="font-size:14px;line-height:1.6;white-space:pre-wrap;">${r.memo}</div></div>`;
+  if (r.memo) html += `<div class="detail-field"><div class="detail-field-label">감상 메모</div><div class="detail-field-value" style="font-size:14px;line-height:1.6;white-space:pre-wrap;">${esc(r.memo)}</div></div>`;
   // 사진 자리 placeholder
   html += `<div id="detail-photo-area"></div>`;
   const sibs = sameSessionRecords(r), at = sibs.findIndex(x => x.id === r.id);
@@ -2156,7 +2184,7 @@ function removeStampsForRecord(target) {
     board.history = board.history.filter(h => !h.recordId || h.recordId !== target.id);
     // ② fallback: recordId 없는 경우 → 연결된 보드에서 날짜 기준 마지막 항목 제거
     if (board.history.length === before && board.id === target.stampBoardId) {
-      const ri = [...board.history].reverse().findIndex(h => h.date === target.date);
+      const ri = [...board.history].reverse().findIndex(h => !h.recordId && h.date === target.date);
       if (ri !== -1) board.history.splice(board.history.length - 1 - ri, 1);
     }
     if (board.history.length !== before) {
@@ -2257,17 +2285,36 @@ function exportData() { openPanel('overlay-export'); } // → doExport()
 function importData(e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => {
+  reader.onload = async ev => {
     try {
       const data = JSON.parse(ev.target.result);
+      if (!data || typeof data !== 'object' || Array.isArray(data)) { showToast('파일 형식 오류'); return; }
+      // 다른 작품 백업을 넣으면 배역 키가 달라 기록이 깨진다 — 표시가 있으면 맞는 것만 받는다
+      if (data.app && data.app !== APP_PREFIX) { showToast('다른 앱의 백업 파일입니다 (' + data.app + ')'); return; }
+      const isArr = v => v === undefined || v === null || Array.isArray(v);
+      const isObj = v => v === undefined || v === null || (typeof v === 'object' && !Array.isArray(v));
+      const recOk = !data.records || data.records.every(r => r && typeof r === 'object' && typeof r.date === 'string' && typeof r.time === 'string');
+      if (!isArr(data.records) || !isArr(data.schedule) || !isArr(data.events) || !isArr(data.stampBoards) || !isArr(data.photos) ||
+          !isObj(data.coupons) || !isObj(data.settings) || !isObj(data.prefs) || !recOk) { showToast('파일 형식 오류'); return; }
+      if (!data.app && !confirm('이 백업 파일에는 어느 앱의 것인지 표시가 없습니다 (옛 형식).\n이 앱의 백업이 맞습니까?')) return;
+      const cur = getRecords();
+      if (!confirm('현재 데이터를 이 백업으로 덮어씁니다.\n(기록 ' + cur.length + '건 → 백업 ' + (data.records ? data.records.length + '건' : '변경 없음') + ')\n\n덮어쓰기 전의 데이터는 이 기기에 자동 보관됩니다.\n계속할까요?')) return;
+      // 되돌릴 길을 남긴다 — 사진은 용량 때문에 제외
+      try {
+        const prefs = {}; EXPORT_PREF_KEYS.forEach(k => { const v = DB.get(k, null); if (v !== null) prefs[k] = v; });
+        DB.set('prev_backup', { app: APP_PREFIX, savedAt: new Date().toISOString(), records: cur, schedule: getSchedule(), events: getEvents(),
+          stampBoards: getStampBoards(), coupons: getCoupons(), settings: getSettings(), prefs });
+      } catch { if (!confirm('이전 데이터를 보관하지 못했습니다 (저장 공간 부족).\n그래도 덮어쓸까요?')) return; }
       if (data.records)     saveRecords(data.records);
       if (data.schedule)    saveSchedule(data.schedule);
       if (data.events)      saveEvents(data.events);
       if (data.stampBoards) saveStampBoards(data.stampBoards);
       if (data.coupons)     saveCoupons(data.coupons);
       if (data.settings) { saveSettings(data.settings); applyDark(data.settings.darkMode); applyFontScale(data.settings.fontScale || 0); }
-      if (data.photos && data.photos.length) dbSaveAllPhotos(data.photos);
-      showToast('데이터를 성공적으로 불러왔습니다');
+      if (data.prefs) EXPORT_PREF_KEYS.forEach(k => { if (data.prefs[k] !== undefined) DB.set(k, data.prefs[k]); });
+      let photoFail = false;
+      if (data.photos && data.photos.length) { try { await dbSaveAllPhotos(data.photos); } catch { photoFail = true; } }
+      showToast(photoFail ? '기록은 불러왔지만 사진 복원에 실패했습니다' : '데이터를 성공적으로 불러왔습니다');
       renderHome(); renderCalendar(); renderCoupon(); renderStats();
     } catch { showToast('파일 형식 오류'); }
   };
@@ -2300,7 +2347,7 @@ function resetCouponUsage() {
 function resetAllData() {
   if (!confirm('정말 모든 데이터를 초기화하시겠습니까?\n\n관람 기록, 쿠폰, 도장판, 사진 등 앱에 저장된 모든 데이터가 삭제되며 복구할 수 없습니다.')) return;
   Object.keys(localStorage)
-    .filter(k => k.startsWith(APP_PREFIX) || k === 'scheduleUpdatedAt' || k === 'eventsUpdatedAt')
+    .filter(k => k.startsWith(APP_PREFIX))
     .forEach(k => localStorage.removeItem(k));
   indexedDB.deleteDatabase(APP_PREFIX + 'photos');
   showToast('모든 데이터가 초기화되었습니다');
@@ -2319,7 +2366,7 @@ async function fetchSchedule(manual) {
     if (!Array.isArray(data)) throw new Error('형식 오류');
     saveSchedule(data);
     const now = new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    localStorage.setItem('scheduleUpdatedAt', now);
+    DB.set('scheduleUpdatedAt', now);
     if (timeEl) timeEl.textContent = now;
     if (statusEl) statusEl.textContent = `✓ ${data.length}개 회차 로드됨`;
     if (manual) showToast(`스케줄 ${data.length}개 업데이트 완료`);
@@ -2327,7 +2374,7 @@ async function fetchSchedule(manual) {
     renderCalendar(); renderHome();
   } catch {
     const cached = getSchedule();
-    const savedAt = localStorage.getItem('scheduleUpdatedAt');
+    const savedAt = DB.get('scheduleUpdatedAt', null);
     if (timeEl) timeEl.textContent = savedAt ? savedAt + ' (캐시)' : '캐시 없음';
     if (statusEl) statusEl.textContent = cached.length ? `오프라인 — ${cached.length}개 캐시` : '스케줄 없음';
     if (manual) showToast('오프라인 상태입니다');
@@ -2344,14 +2391,14 @@ async function fetchEvents(manual) {
     if (!Array.isArray(data)) throw new Error('형식 오류');
     saveEvents(data);
     const now = new Date().toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    localStorage.setItem('eventsUpdatedAt', now);
+    DB.set('eventsUpdatedAt', now);
     if (timeEl) timeEl.textContent = now;
     if (statusEl) statusEl.textContent = `✓ ${data.length}개 이벤트 로드됨`;
     if (manual) showToast(`이벤트 ${data.length}개 업데이트 완료`);
     renderCalendar();
   } catch {
     const cached = getEvents();
-    const savedAt = localStorage.getItem('eventsUpdatedAt');
+    const savedAt = DB.get('eventsUpdatedAt', null);
     if (timeEl) timeEl.textContent = savedAt ? savedAt + ' (캐시)' : '캐시 없음';
     if (statusEl) statusEl.textContent = cached.length ? `오프라인 — ${cached.length}개 캐시` : '이벤트 없음';
     if (manual) showToast('오프라인 상태입니다');
@@ -2393,7 +2440,7 @@ function renderHome() {
           const lbl = m.couponKey ? '🏷' : '📸';   // 할인권 보상 / 폴라로이드
           // recordId 있으면 직접, 없으면 같은 날짜 record로 fallback
           const rid = h.recordId ||
-            (records.find(r => r.date === h.date) || {}).id;
+            (watchedOnly(records).find(r => r.date === h.date) || {}).id;
           if (rid) {
             if (!msRecordMap[rid]) msRecordMap[rid] = [];
             if (!msRecordMap[rid].includes(lbl)) msRecordMap[rid].push(lbl);
@@ -2420,7 +2467,7 @@ function renderHome() {
   const splitBadge = r => {
     if (isTransferred(r)) return '';
     const ts = upcoming.filter(t => isTransferred(t) && sameSess(t, r));
-    const to = ts.map(t => t.transferTo).filter(Boolean).join(', ');
+    const to = ts.map(t => esc(t.transferTo)).filter(Boolean).join(', ');
     return ts.length ? `<span class="split-badge" title="양도${to ? ' · ' + to : ''}">+${ts.length}</span>` : '';
   };
   const nextShow = upcoming.find(isWatched);
@@ -2433,7 +2480,7 @@ function renderHome() {
     const d    = new Date(nextShow.date + 'T00:00:00');
     const diff = Math.round((d - new Date(today + 'T00:00:00')) / 86400000);
     const dday = diff === 0 ? 'D-DAY' : `D-${diff}`;
-    const seat = nextShow.seatZone ? (nextShow.seatFloor ? nextShow.seatFloor + ' ' : '') + nextShow.seatZone + '열 ' + nextShow.seatNumber + '번' : '';
+    const seat = nextShow.seatZone ? (nextShow.seatFloor ? nextShow.seatFloor + ' ' : '') + nextShow.seatZone + '열' + (nextShow.seatNumber != null ? ' ' + nextShow.seatNumber + '번' : '') : '';
     const castPills = ROLES.map(r => nextShow[r.key] ? `<span class="next-show-pill">${nextShow[r.key]}</span>` : '').filter(Boolean).join('');
     nextEl.innerHTML = `
       <div class="next-show-card" onclick="openDetail('${nextShow.id}')">
@@ -2454,14 +2501,14 @@ function renderHome() {
       const d2   = new Date(r.date + 'T00:00:00');
       const diff2 = Math.round((d2 - new Date(today + 'T00:00:00')) / 86400000);
       const dday2 = diff2 === 0 ? 'D-DAY' : `D-${diff2}`;
-      const seat2 = r.seatZone ? (r.seatFloor ? r.seatFloor + ' ' : '') + r.seatZone + '열 ' + r.seatNumber + '번' : '';
+      const seat2 = r.seatZone ? (r.seatFloor ? r.seatFloor + ' ' : '') + r.seatZone + '열' + (r.seatNumber != null ? ' ' + r.seatNumber + '번' : '') : '';
       const castStr = homeCastStr(r);
       const upMsBadge = (msRecordMap[r.id]||[]).map(l =>
         `<span style="font-size:11px;font-weight:700;color:var(--accent);flex-shrink:0;">${l}</span>`
       ).join('');
       const tr = isTransferred(r);
       const trTail = tr
-        ? ` <span style="font-size:10px;color:var(--text3);">↪ 양도${r.transferTo ? ' · ' + r.transferTo : ''}</span>`
+        ? ` <span style="font-size:10px;color:var(--text3);">↪ 양도${r.transferTo ? ' · ' + esc(r.transferTo) : ''}</span>`
         : (r.isBooked===false ? ' <span style="font-size:10px;color:var(--text3);">미정</span>' : '');
       return `<div class="upcoming-item${tr ? ' transferred' : ''}" onclick="openDetail('${r.id}')">
         <div class="upcoming-dday" style="${(tr || r.isBooked===false)?'color:var(--text3);':''}">${dday2}</div>
@@ -2484,7 +2531,7 @@ function renderHome() {
         const ap = Math.min(100, Math.round(cur   / b.totalSlots * 100));
         const done = cur >= b.totalSlots;
         return `<div class="home-stamp-row">
-          <div class="home-stamp-name">[🎫 ${b.name}]${done?' 🎉':''}</div>
+          <div class="home-stamp-name">[🎫 ${esc(b.name)}]${done?' 🎉':''}</div>
           <div class="home-stamp-bar">
             <div class="home-stamp-bar-fill scheduled" style="width:${sp}%"></div>
             <div class="home-stamp-bar-fill actual"    style="width:${ap}%"></div>
@@ -2512,7 +2559,7 @@ function renderHome() {
     }).join('')}</div>${homeDsRow}`;
 
   // ⑤ 최근 관람
-  const pastAll   = records.filter(r => r.date < today).sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+  const pastAll   = watchedOnly(records).filter(r => r.date < today).sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
   const showCount = DB.get('homeRecentCount', 3);
   const past      = pastAll.slice(0, showCount);
   document.getElementById('home-recent').innerHTML = pastAll.length === 0
@@ -2733,7 +2780,7 @@ function renderCalendar() {
         wSegs.filter(s=>s.row===row).forEach(s => {
           const lp = (s.startCol/7*100).toFixed(2);
           const wp = ((s.endCol-s.startCol+1)/7*100).toFixed(2);
-          html += `<div style="position:absolute;left:${lp}%;width:calc(${wp}% - 3px);height:14px;background:${s.color};border-radius:3px;display:flex;align-items:center;padding:0 4px;overflow:hidden;"><span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.name}</span></div>`;
+          html += `<div style="position:absolute;left:${lp}%;width:calc(${wp}% - 3px);height:14px;background:${esc(s.color)};border-radius:3px;display:flex;align-items:center;padding:0 4px;overflow:hidden;"><span style="font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(s.name)}</span></div>`;
         });
         html += `</div>`;
       }
@@ -2762,11 +2809,11 @@ function renderCalDayPanel(ds, daySch, doneSet, bookedSet, records) {
     .filter(ev => ds >= ev.startDate && ds <= ev.endDate)
     .forEach(ev => {
       const link = ev.url
-        ? `<a class="cal-session-add" href="${ev.url}" target="_blank" rel="noopener">안내 ↗</a>`
+        ? `<a class="cal-session-add" href="${esc(ev.url)}" target="_blank" rel="noopener">안내 ↗</a>`
         : '';
       html += `<div class="cal-session-row">`
-            + `<span class="cal-event-dot" style="background:${ev.color||'var(--accent)'};"></span>`
-            + `<div class="cal-event-name">${ev.name}</div>${link}</div>`;
+            + `<span class="cal-event-dot" style="background:${esc(ev.color||'var(--accent)')};"></span>`
+            + `<div class="cal-event-name">${esc(ev.name)}</div>${link}</div>`;
     });
 
   const sorted = [...daySch].sort((a,b)=>a.time.localeCompare(b.time));
@@ -2777,20 +2824,29 @@ function renderCalDayPanel(ds, daySch, doneSet, bookedSet, records) {
       const isBooked = bookedSet.has(key);
       const recs = dayRecords.filter(r => r.time === s.time);
       const trans = recs.find(isTransferred);
-      const transBadge = trans ? `<span class="cal-session-badge transferred">↪ 양도${trans.transferTo ? ' · ' + trans.transferTo : ''}</span>` : '';
+      const transBadge = trans ? `<span class="cal-session-badge transferred">↪ 양도${trans.transferTo ? ' · ' + esc(trans.transferTo) : ''}</span>` : '';
       const badge = (isBooked ? '<span class="cal-session-badge booked">✓ 확정</span>'
         : isDone ? '<span class="cal-session-badge done">✅</span>' : '') + transBadge;
       const castStr = ROLES.map(r => s[r.key]).filter(Boolean).join(' · ');
       const btn = recs.length === 0
-        ? `<button class="cal-session-add" onclick="openAddRecordFromSchedule('${ds}','${s.time}','${JSON.stringify(s).replace(/"/g,'&quot;')}')">+ 기록</button>`
+        ? `<button class="cal-session-add" onclick="openAddRecordFromSchedule('${ds}','${s.time}','${JSON.stringify(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">+ 기록</button>`
         : recs.map((r,i) => `<button class="cal-session-add" onclick="openDetail('${r.id}')">${recs.length>1?`상세${i+1}`:'상세'}</button>`).join('');
       html += `<div class="cal-session-row"><div class="cal-session-time">${s.time}</div><div class="cal-session-casting">${castStr}</div>${badge}${btn}</div>`;
+    });
+    // 회차 시간이 바뀌어 스케줄에 없는 시간으로 남은 기록도 보이게 한다 (안 그러면 캘린더에서 열 수 없다)
+    const knownTimes = new Set(sorted.map(s => s.time));
+    dayRecords.filter(r => !knownTimes.has(r.time)).sort((a,b)=>a.time.localeCompare(b.time)).forEach(r => {
+      const castStr = ROLES.map(role => r[role.key]).filter(Boolean).join(' · ');
+      const b = isTransferred(r)
+        ? `<span class="cal-session-badge transferred">↪ 양도${r.transferTo ? ' · ' + esc(r.transferTo) : ''}</span>`
+        : '<span class="cal-session-badge done">✅</span>';
+      html += `<div class="cal-session-row"><div class="cal-session-time">${r.time}</div><div class="cal-session-casting">${castStr}</div>${b}<button class="cal-session-add" onclick="openDetail('${r.id}')">상세</button></div>`;
     });
   } else if (dayRecords.length) {
     dayRecords.sort((a,b)=>a.time.localeCompare(b.time)).forEach(r => {
       const castStr = ROLES.map(role => r[role.key]).filter(Boolean).join(' · ');
       const b = isTransferred(r)
-        ? `<span class="cal-session-badge transferred">↪ 양도${r.transferTo ? ' · ' + r.transferTo : ''}</span>`
+        ? `<span class="cal-session-badge transferred">↪ 양도${r.transferTo ? ' · ' + esc(r.transferTo) : ''}</span>`
         : '<span class="cal-session-badge done">✅</span>';
       html += `<div class="cal-session-row"><div class="cal-session-time">${r.time}</div><div class="cal-session-casting">${castStr}</div>${b}<button class="cal-session-add" onclick="openDetail('${r.id}')">상세</button></div>`;
     });
@@ -3227,7 +3283,7 @@ function renderStampBoards() {
 
     return `<div class="stamp-board${paused?' paused':''}">
       <div class="stamp-board-header">
-        <div class="stamp-board-name">[🎫 ${b.name}]</div>
+        <div class="stamp-board-name">[🎫 ${esc(b.name)}]</div>
         <div class="stamp-board-menu">
           <button class="stamp-menu-btn" onclick="renameStampBoard('${b.id}')" title="이름변경">📝</button>
           <button class="stamp-menu-btn" onclick="togglePauseStampBoard('${b.id}')" title="${paused?'재개':'일시정지'}">${paused?'▶':'⏸'}</button>
@@ -3328,6 +3384,7 @@ function addStamp() {
 // 공통 도장 적용
 function applyStampToBoard(boardId, qty, date, historyMethod, comment) {
   applyStampToBoard._lastOverflow = 0; // 항상 초기화
+  applyStampToBoard._pushed = false;
   const boards = getStampBoards();
   const board  = boards.find(b => b.id === boardId);
   if (!board) return null;
@@ -3339,6 +3396,7 @@ function applyStampToBoard(boardId, qty, date, historyMethod, comment) {
   if (!board.history) board.history = [];
   const qtyLabel = actualQty>1?' ×'+actualQty:'';
   board.history.push({ date, method: historyMethod+qtyLabel, comment:comment||'', qty:actualQty });
+  applyStampToBoard._pushed = true;   // 실제로 도장이 들어갔는지 (가득 찬 판이면 false)
   recalcStampCount(board);
   let toastMsg = `도장 ${actualQty}개 완료 (${board.currentCount}/${board.totalSlots})`;
   triggerMilestonesIfNeeded(board, boardId);
@@ -3584,7 +3642,7 @@ function renderStampHistoryPanel() {
       <div style="flex:1;min-width:0;">
         <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">${dateStr}</div>
         <div style="font-size:12px;font-weight:500;color:var(--text2);">${baseMethod}${qtyLabel}</div>
-        ${h.comment?`<div style="font-size:11px;color:var(--text3);margin-top:1px;">${h.comment}</div>`:''}
+        ${h.comment?`<div style="font-size:11px;color:var(--text3);margin-top:1px;">${esc(h.comment)}</div>`:''}
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;margin-left:8px;align-items:center;">
         ${is4thMs ? m4Buttons() : ''}
@@ -3684,9 +3742,9 @@ function savePairFilter() {
 function restoreFilters() {
   // 캘린더 필터
   const savedCF = DB.get('calFilter', null);
-  if (savedCF) Object.keys(savedCF).forEach(k => { if (k in calFilter) calFilter[k] = savedCF[k]; });
+  if (savedCF && typeof savedCF === 'object') ROLES.forEach(role => { const v = cfList(savedCF[role.key]).filter(x => role.actors.includes(x)); calFilter[role.key] = v.length ? v : null; });   // 명단에 없는 값은 버린다
   const savedCE = DB.get('calExpandedRoles', []);
-  savedCE.forEach(role => calExpandedRoles.add(role));
+  savedCE.filter(role => ROLES.some(r => r.key === role)).forEach(role => calExpandedRoles.add(role));
   updateRoleTabIndicators();
   if (calExpandedRoles.size > 0) renderAllActorChips();
   updateCalFilterHint();
@@ -3705,7 +3763,9 @@ function openFromHub() {
   try { history.replaceState(null, '', location.pathname); } catch {}
 
   const sameDay = getRecords().filter(r => r.date === date);
-  const rec = (time && sameDay.find(r => r.time === time)) || sameDay[0];
+  // 시간이 주어졌는데 그 회차 기록이 없으면 다른 회차 기록을 열지 않는다 (캘린더에서 그 날짜를 펼친다)
+  const cands = time ? sameDay.filter(r => r.time === time) : sameDay;
+  const rec = cands.find(isWatched) || cands[0];
   if (rec) { openDetail(rec.id); return; }
 
   const tab = document.querySelector('.tab-btn[onclick*="calendar"]');
@@ -3731,16 +3791,12 @@ function init() {
       .then(() => console.log('SW registered'))
       .catch(e => console.log('SW failed:', e));
   }
-  const savedAt = localStorage.getItem('scheduleUpdatedAt');
+  const savedAt = DB.get('scheduleUpdatedAt', null);
   const timeEl  = document.getElementById('schedule-update-time');
   if (timeEl && savedAt) timeEl.textContent = savedAt + ' (캐시)';
   openFromHub();
 }
 init();
 </script>
-</body>
-</html>
-</body>
-</html>
 </body>
 </html>
