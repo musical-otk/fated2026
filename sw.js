@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fated2026-v11';
+const CACHE_NAME = 'fated2026-v13';
 const CACHE_PREFIX = 'fated2026-';   // 같은 origin 의 다른 앱 캐시는 건드리지 않는다
 const NO_CACHE = /[?&]t=\d+/;   // 스케줄·이벤트 json 은 매번 새 주소라 캐시에 쌓지 않는다
 const BASE = '/fated2026';
